@@ -12,10 +12,11 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy import ndimage
 
 from marsnav.config import param
 from marsnav.geodesy import aoi_to_geo, geo_to_aoi
-from marsnav.terrain import roughness, sky_fraction_grid, slope_aspect_horn
+from marsnav.terrain import horizon_grid, roughness, sky_fraction_grid, slope_aspect_horn
 
 
 @dataclass
@@ -74,12 +75,34 @@ class SiteGrid:
         return roughness(self.z, self.cell, k)
 
     @cached_property
+    def _analysis(self) -> tuple[NDArray, float, int]:
+        """DEM coarsened (block mean) to about terrain.analysis_cell_m for the horizon-based analyses: (dem, cell, factor)."""
+        f = max(1, round(float(param("terrain.analysis_cell_m")) / self.cell))
+        z = np.where(np.isfinite(self.z), self.z, np.nanmin(self.z))
+        if f == 1:
+            return z, self.cell, 1
+        h, w = (z.shape[0] // f) * f, (z.shape[1] // f) * f
+        return z[:h, :w].reshape(h // f, f, w // f, f).mean(axis=(1, 3)), self.cell * f, f
+
+    def _upsample(self, a: NDArray, f: int) -> NDArray:
+        if f == 1:
+            return a
+        up = ndimage.zoom(a, f, order=1, mode="nearest")
+        H, W = self.z.shape
+        return np.pad(up, ((0, max(H - up.shape[0], 0)), (0, max(W - up.shape[1], 0))), mode="edge")[:H, :W]
+
+    def horizon_toward(self, azimuth_deg: float, r_max: float) -> NDArray:
+        """Terrain horizon angle [rad] toward one azimuth for every cell (computed on the coarse analysis grid, interpolated back)."""
+        z, cell, f = self._analysis
+        return self._upsample(horizon_grid(z, cell, azimuth_deg, r_max), f)
+
+    @cached_property
     def sky_fraction(self) -> NDArray:
         n_az = int(param("terrain.sky_grid_azimuths"))
         r_max = float(param("terrain.r_far_m"))
         n = float(param("radiation.sky_weight_n"))
-        z = np.where(np.isfinite(self.z), self.z, np.nanmin(self.z))
-        return sky_fraction_grid(z, self.cell, n_az=n_az, n=n, r_max=r_max)
+        z, cell, f = self._analysis
+        return self._upsample(sky_fraction_grid(z, cell, n_az=n_az, n=n, r_max=r_max), f)
 
     @cached_property
     def z_ref(self) -> float:

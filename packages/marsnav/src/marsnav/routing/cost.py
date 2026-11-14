@@ -13,7 +13,6 @@ from marsnav.routing import astar as K
 from marsnav.routing.grid import SiteGrid
 from marsnav.routing.mobility import total_mass
 from marsnav.sun import SunState, incidence, sun_position
-from marsnav.terrain import horizon_grid
 
 
 @dataclass
@@ -135,7 +134,7 @@ def build_layers(grid: SiteGrid, utc: str, astro: Astronaut) -> CellLayers:
     window_m = int(param("terrain.roughness_window")) * grid.cell
     rough_n = grid.roughness_m / (float(param("hazard.roughness_rel")) * window_m)
     if sun.elevation_deg > 0:
-        hor = horizon_grid(zf, grid.cell, sun.azimuth_deg, float(param("terrain.r_far_m")))
+        hor = grid.horizon_toward(sun.azimuth_deg, float(param("terrain.r_far_m")))
         shadow = np.radians(sun.elevation_deg) < hor
         cos_i = np.where(shadow, 0.0, incidence(slope_r, aspect, sun.elevation_deg, sun.azimuth_deg))
     else:

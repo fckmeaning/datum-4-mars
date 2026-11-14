@@ -158,6 +158,20 @@ def health() -> dict:
             "data_levels": sites.available_levels("gale") or ["L0"]}
 
 
+@app.get(API + "/sources")
+def list_sources() -> list[dict]:
+    import yaml
+
+    from marsnav.config import repo_root
+
+    f = repo_root() / "data" / "manifest.yaml"
+    if not f.is_file():
+        return []
+    items = (yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("products", [])
+    return [{"product_id": None, "retrieved_at": None, "resolution_m": None, "license": None, "level": None, "notes": None,
+             "simulated": False, **p} for p in items if {"id", "family", "source_url", "credit"} <= set(p)]
+
+
 @app.get(API + "/sites")
 def list_sites() -> list[dict]:
     return [sites.site_record("gale")]

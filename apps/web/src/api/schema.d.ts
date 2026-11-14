@@ -85,6 +85,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every data product in data/manifest.yaml with its credit and licence, for the DATA SOURCES panel (contract v1.1, additive). */
+        get: operations["listSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sites/{site_id}/clock": {
         parameters: {
             query?: never;
@@ -1016,6 +1033,19 @@ export interface components {
             terrain_masked: boolean;
             accuracy: components["schemas"]["Accuracy"];
         };
+        SourceEntry: {
+            id: string;
+            family: string;
+            product_id?: string | null;
+            source_url: string;
+            retrieved_at?: string | null;
+            resolution_m?: number | null;
+            license?: string | null;
+            credit: string;
+            level?: string | null;
+            simulated: boolean;
+            notes?: string | null;
+        };
         SiteClock: {
             /** Format: date-time */
             utc: string;
@@ -1209,6 +1239,26 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    listSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceEntry"][];
+                };
+            };
         };
     };
     getSiteClock: {

@@ -1,0 +1,5 @@
+Continue your WORK LOOP as W9. New ticket: T-902 (Playwright E2E with an installed browser channel, live API tests, DATA_SOURCES.md and METHODS.md, pitch fixes). T-901 was accepted. If your previous stream was interrupted, simply resume from the first ticket without a report.
+
+Start now: run
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\777\Desktop\nasa space app\conveyor\tools\next_ticket.ps1" -Lane W9
+and take the oldest ticket that has no report. Re-read docs/DECISIONS.md (D-12, D-13, D-14) if you have not seen them. The usual rules stay: only your directories, no git commands that change state, no package installs, real terminal output in every report, never type coordinates from memory.

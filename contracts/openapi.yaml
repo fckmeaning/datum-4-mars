@@ -81,6 +81,14 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Place" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /sources:
+    get:
+      tags: [system]
+      operationId: listSources
+      description: Every data product in data/manifest.yaml with its credit and licence, for the DATA SOURCES panel (contract v1.1, additive).
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SourceEntry" } } } } }
+
   /sites/{site_id}/clock:
     get:
       tags: [sites]
@@ -947,6 +955,22 @@ components:
         max_elevation_deg: { type: number }
         terrain_masked: { type: boolean, description: True when the terrain horizon shortened or removed part of the geometric pass }
         accuracy: { $ref: "#/components/schemas/Accuracy" }
+
+    SourceEntry:
+      type: object
+      required: [id, family, source_url, credit, simulated]
+      properties:
+        id: { type: string }
+        family: { type: string }
+        product_id: { type: [string, "null"] }
+        source_url: { type: string }
+        retrieved_at: { type: [string, "null"] }
+        resolution_m: { type: [number, "null"] }
+        license: { type: [string, "null"] }
+        credit: { type: string }
+        level: { type: [string, "null"] }
+        simulated: { type: boolean }
+        notes: { type: [string, "null"] }
 
     SiteClock:
       type: object

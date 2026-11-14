@@ -1,0 +1,5 @@
+Continue your WORK LOOP as W7. New tickets: T-702 (real 10 m terrain, hillshade/slope draping, route tube, sun shadows, FPS report), then T-703 (globe labels, zoom, orbiters, texture). T-701 was accepted.
+
+Start now: run
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\777\Desktop\nasa space app\conveyor\tools\next_ticket.ps1" -Lane W7
+and take the oldest ticket that has no report. Re-read docs/DECISIONS.md (D-12, D-13, D-14) if you have not seen them. The usual rules stay: only your directories, no git commands that change state, no package installs, real terminal output in every report, never type coordinates from memory.

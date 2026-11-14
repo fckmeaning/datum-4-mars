@@ -1,0 +1,5 @@
+Continue your WORK LOOP as W8. New tickets: T-802 (DataSourcesPanel, LayerDock, BottomBar, route charts and compare table), then T-803 (orientation UI, time slider, back-to-base widget, HUD wiring, marsnav-ts). T-801 was accepted.
+
+Start now: run
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\777\Desktop\nasa space app\conveyor\tools\next_ticket.ps1" -Lane W8
+and take the oldest ticket that has no report. Re-read docs/DECISIONS.md (D-12, D-13, D-14) if you have not seen them. The usual rules stay: only your directories, no git commands that change state, no package installs, real terminal output in every report, never type coordinates from memory.

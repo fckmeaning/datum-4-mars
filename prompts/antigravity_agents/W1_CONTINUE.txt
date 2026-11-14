@@ -1,0 +1,5 @@
+Continue your WORK LOOP as W1. Your new tickets: T-102-r1 (rework: your coordinates differ from NASA's measured rover positions by up to 1.7 km), then T-103, T-104, T-105. Read the CEO review at the top of each ticket first; the CEO already produced places.json, traverse.geojson and the L1/L2/L3 elevation (do not redo them).
+
+Start now: run
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\777\Desktop\nasa space app\conveyor\tools\next_ticket.ps1" -Lane W1
+and take the oldest ticket that has no report. Re-read docs/DECISIONS.md (D-12, D-13, D-14) if you have not seen them. The usual rules stay: only your directories, no git commands that change state, no package installs, real terminal output in every report, never type coordinates from memory.

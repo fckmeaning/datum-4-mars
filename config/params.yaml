@@ -92,6 +92,7 @@ terrain:
   roughness_window:   { value: 5,     unit: cells, source: design }
   horizon_azimuths:   { value: 72,    unit: "1",   source: "ASSUMPTION (performance)" }
   sky_grid_azimuths:  { value: 36,    unit: "1",   source: "ASSUMPTION (performance, whole-grid sky fraction)" }
+  analysis_cell_m:    { value: 20.0,  unit: m,     source: "ASSUMPTION (performance): sky fraction and sun-shadow horizons are computed on a grid coarsened to about this cell size and interpolated back; slope, roughness and routing stay at full resolution" }
   r_near_m:           { value: 2000.0,  unit: m,   source: "ASSUMPTION (performance)" }
   r_far_m:            { value: 20000.0, unit: m,   source: "ASSUMPTION (performance)" }
 

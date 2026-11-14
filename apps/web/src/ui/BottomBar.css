@@ -1,0 +1,132 @@
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-lg);
+  background: var(--color-surface-glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border-top: 1px solid var(--color-surface-glass-border);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  width: 100%;
+  height: 48px;
+  position: relative;
+  z-index: var(--z-panel);
+}
+
+.bottom-bar__left,
+.bottom-bar__center,
+.bottom-bar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* Altitude / Telemetry pill */
+.bottom-bar__telemetry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(230, 237, 243, 0.1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.bottom-bar__telemetry-label {
+  color: var(--color-text-dim);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.04em;
+}
+
+.bottom-bar__telemetry-val {
+  color: #ffffff;
+  font-weight: var(--font-bold);
+}
+
+/* Autopilot Toggle Button */
+.autopilot-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(230, 237, 243, 0.15);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+.autopilot-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(230, 237, 243, 0.3);
+}
+
+.autopilot-btn--active {
+  background: rgba(63, 185, 80, 0.2);
+  border-color: var(--color-ok);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(63, 185, 80, 0.3);
+}
+
+.autopilot-btn__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-dim);
+  transition: background var(--transition-fast);
+}
+
+.autopilot-btn--active .autopilot-btn__indicator {
+  background: var(--color-ok);
+  box-shadow: 0 0 8px var(--color-ok);
+  animation: hud-pulse 1.5s infinite;
+}
+
+.autopilot-btn__label {
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.autopilot-btn__status {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+}
+
+.autopilot-btn--active .autopilot-btn__status {
+  color: var(--color-ok);
+}
+
+/* Generic bar buttons */
+.bottom-bar__btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(230, 237, 243, 0.1);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bottom-bar__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(230, 237, 243, 0.25);
+}
+
+.bottom-bar__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
