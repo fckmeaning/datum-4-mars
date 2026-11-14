@@ -182,3 +182,19 @@ def latlon_to_xy(points: list[tuple[float, float]]) -> NDArray:
     lon = np.array([p[1] for p in points])
     x, y = geo_to_aoi(lat, lon)
     return np.column_stack([x, y])
+
+
+from marsnav.localize.ekf import (  # noqa: E402,F401
+    EkfUpdate,
+    ekf_init,
+    ekf_predict,
+    ekf_update,
+    heading_deg,
+    update_from_resection,
+    update_from_skyline,
+    update_from_sun_compass,
+    update_heading,
+    update_pose,
+    update_position,
+)
+from marsnav.localize.skyline import SkylineResult, skyline_match  # noqa: E402,F401

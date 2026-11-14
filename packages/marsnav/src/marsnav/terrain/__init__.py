@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 from scipy import ndimage
 
 from marsnav.geodesy import curvature_drop
+from marsnav.terrain.viewshed import Viewshed, viewshed, viewshed_multires, xy_to_rowcol  # noqa: F401  (F10, re-exported)
 
 
 def _gradients_horn(dem: NDArray, cell: float) -> tuple[NDArray, NDArray]:
