@@ -131,7 +131,8 @@ def build_layers(grid: SiteGrid, utc: str, astro: Astronaut) -> CellLayers:
     zf = np.where(finite, z, np.nanmin(z))
     slope_deg = grid.slope_deg
     slope_r, aspect = grid.slope_aspect
-    rough_n = grid.roughness_m / float(param("hazard.roughness_ref_m"))
+    window_m = int(param("terrain.roughness_window")) * grid.cell
+    rough_n = grid.roughness_m / (float(param("hazard.roughness_rel")) * window_m)
     if sun.elevation_deg > 0:
         hor = horizon_grid(zf, grid.cell, sun.azimuth_deg, float(param("terrain.r_far_m")))
         shadow = np.radians(sun.elevation_deg) < hor
