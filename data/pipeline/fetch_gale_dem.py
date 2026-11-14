@@ -46,7 +46,26 @@ def aggregate(a: np.ndarray, f: int) -> np.ndarray:
     return out.astype("float32")
 
 
+BAND_CACHE = Path(__file__).resolve().parents[2] / "data" / "raw" / "gale_dem_bands"  # git-ignored (data/raw/)
+
+
 def read_band(url: str, col0: int, ncols: int, row: int, nrows: int) -> np.ndarray:
+    """Read and aggregate one row band; the aggregated result is cached on disk so an interrupted run resumes."""
+    cache = BAND_CACHE / f"c{col0}_n{ncols}_r{row}_h{nrows}_f{F}.npy"
+    if cache.is_file():
+        try:
+            return np.load(cache)
+        except Exception:  # noqa: BLE001 - corrupt/partial cache file: refetch
+            cache.unlink(missing_ok=True)
+    out = _fetch_band(url, col0, ncols, row, nrows)
+    BAND_CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = cache.with_suffix(".tmp.npy")
+    np.save(tmp, out)
+    tmp.replace(cache)  # atomic: a killed process never leaves a half-written cache entry
+    return out
+
+
+def _fetch_band(url: str, col0: int, ncols: int, row: int, nrows: int) -> np.ndarray:
     import rasterio
     from rasterio.windows import Window
 
