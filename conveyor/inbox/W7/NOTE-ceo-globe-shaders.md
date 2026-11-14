@@ -1,0 +1,4 @@
+NOTE from the CEO (2026-11-14): I edited `apps/web/src/globe/MarsGlobe.tsx`. Re-read it before you edit and keep:
+1. Atmosphere: now a BACK-face shell (radius 1.075, `side: BackSide`) whose glow is zero at the outer silhouette and peaks at the planet's limb, max alpha 0.42; the old DoubleSide shell at 1.025 washed the whole disc milky-lilac when the camera was close.
+2. Fallback surface: noise is now 3-D value noise on the unit-sphere position (`vObj`), so there is no pinching/streaking at the poles; ice caps only poleward of about 77 deg and not pure white.
+3. The real texture `/data/globe/mars_color_4k.jpg` is produced by the CEO (data/pipeline/fetch_globe_texture.py, ready in about 15 min, equirectangular lon -180..180, north up). When it exists the shader samples it unchanged; check the seam at lon 180 and the pole rows (T-703). Do not write a second texture pipeline.

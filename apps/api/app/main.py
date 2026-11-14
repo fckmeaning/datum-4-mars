@@ -151,6 +151,17 @@ def _grid(site_id: str, level: str | None):
         raise err(400, "LEVEL_UNAVAILABLE", str(e)) from None
 
 
+# Routing runs on a coarser level than the map shows: on the 10 m grid (3.1 M cells) four route profiles take about 20 s,
+# on the 20 m grid about 4 s. Override with MARSNAV_ROUTE_LEVEL (L1, L2, L3) or pass `level` in the request.
+ROUTE_LEVEL = os.environ.get("MARSNAV_ROUTE_LEVEL", "L2")
+
+
+def _route_grid(site_id: str, level: str | None):
+    if level is None and ROUTE_LEVEL in sites.available_levels(site_id):
+        level = ROUTE_LEVEL
+    return _grid(site_id, level)
+
+
 def _no_route(e: Exception) -> HTTPException:
     return err(422, "NO_ROUTE", f"No feasible route: {e}. Try other points or relax the slope limit.")
 
@@ -323,7 +334,7 @@ def _plan_kwargs(req: RouteRequest, grid=None) -> dict:  # noqa: ANN001
 
 @app.post(API + "/route")
 def route(req: RouteRequest) -> dict:
-    grid = _grid(req.site_id, req.level)
+    grid = _route_grid(req.site_id, req.level)
     rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
     try:
         return plan_route(grid, rcs, profile=req.profile, weights=req.weights, **_plan_kwargs(req, grid))
@@ -333,7 +344,7 @@ def route(req: RouteRequest) -> dict:
 
 @app.post(API + "/route/alternatives")
 def route_alternatives(req: AlternativesRequest) -> dict:
-    grid = _grid(req.site_id, req.level)
+    grid = _route_grid(req.site_id, req.level)
     rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
     try:
         return alternatives(grid, rcs, list(req.profiles), **_plan_kwargs(req, grid))
@@ -343,7 +354,7 @@ def route_alternatives(req: AlternativesRequest) -> dict:
 
 @app.post(API + "/route/order")
 def route_order(req: OrderRequest) -> dict:
-    grid = _grid(req.site_id, None)
+    grid = _route_grid(req.site_id, None)
     rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
     try:
         return order_waypoints(grid, rcs, req.profile, req.start_utc or now_iso(), None, req.return_to_start)
@@ -353,7 +364,7 @@ def route_order(req: OrderRequest) -> dict:
 
 @app.post(API + "/route/back-to-base")
 def route_back_to_base(req: BackToBaseRequest) -> dict:
-    grid = _grid(req.site_id, None)
+    grid = _route_grid(req.site_id, None)
     pos = grid.latlon_to_rc(req.position.lat, req.position.lon)
     b = req.base or GeoPoint(**{k: sites.base_place(req.site_id)[k] for k in ("lat", "lon")})
     base = grid.latlon_to_rc(b.lat, b.lon)
@@ -378,7 +389,7 @@ class ParetoRequest(RouteRequest):
 def route_pareto(req: ParetoRequest) -> dict:
     from marsnav.routing.planner import pareto_routes
 
-    grid = _grid(req.site_id, req.level)
+    grid = _route_grid(req.site_id, req.level)
     rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
     kw = _plan_kwargs(req, grid)
     kw.pop("optimize_order", None)
@@ -400,7 +411,7 @@ def route_uncertainty_ep(req: UncertaintyRequest) -> dict:
     from marsnav.uncertainty import route_uncertainty
 
     r = req.route
-    grid = _grid(r.site_id, r.level)
+    grid = _route_grid(r.site_id, r.level)
     rcs = [_resolve_rc(r.site_id, grid, w) for w in r.waypoints]
     kw = _plan_kwargs(r, grid)
     try:
@@ -625,9 +636,148 @@ def resection_ep(req: ResectionRequest) -> dict:
             "iterations": r.iterations, "converged": r.converged, "quality_flags": r.flags}
 
 
+
+
+# ---------------------------------------------------------------- export, viewshed, rover, skyline (F10, rover mode, F43)
+class ExportRequest(BaseModel):
+    route: dict[str, Any]
+    site_id: str = "gale"
+    waypoints: list[GeoPoint] | None = None
+    name: str | None = None
+
+
+@app.post(API + "/route/export")
+def route_export(req: ExportRequest, download: bool = False) -> JSONResponse:
+    """RFC 7946 FeatureCollection of a route (no `crs` member; Mars sphere and planetocentric latitude stated in properties)."""
+    from marsnav.export import route_to_geojson
+
+    grid = _route_grid(req.site_id, None)
+
+    def elevation_at(lat: float, lon: float) -> float | None:
+        rc = grid.latlon_to_rc(lat, lon)
+        return _sample_grid(grid, rc) if grid.inside(*rc) else None
+
+    try:
+        gj = route_to_geojson(req.route, [w.model_dump() for w in req.waypoints] if req.waypoints else None, elevation_at=elevation_at,
+                              name=req.name)
+    except (ValueError, KeyError, TypeError) as e:
+        raise err(422, "BAD_ROUTE", f"The route object cannot be exported: {e}") from None
+    headers = {"Content-Disposition": 'attachment; filename="marsnav_route.geojson"'} if download else None
+    return JSONResponse(content=gj, media_type="application/geo+json", headers=headers)
+
+
+@app.get(API + "/sites/{site_id}/viewshed")
+def viewshed_map(site_id: str, lat: float = Query(ge=-90, le=90), lon: float = Query(ge=-180, le=180),
+                 height_m: float = Query(2.0, ge=0, le=60), target_height_m: float = Query(0.0, ge=0, le=60),
+                 radius_m: float = Query(3000.0, ge=50, le=10000), level: Literal["L0", "L1", "L2", "L3"] | None = None) -> dict:
+    """F10 — what is visible from a point (helmet height by default) and where line of sight / radio is shadowed. The result is a
+    cropped bit mask around the observer: packbits, row-major, row 0 = north, 1 = visible / inside the range."""
+    import base64
+    import time
+
+    from marsnav.terrain import viewshed
+
+    grid = _route_grid(site_id, level)
+    r, c = grid.latlon_to_rc(lat, lon)
+    if not grid.inside(r, c):
+        raise err(400, "OUT_OF_AOI", "The observer lies outside the site area. Pick a point inside the map bounds.")
+    t0 = time.perf_counter()
+    try:
+        vs = viewshed(grid.z, grid.cell, r, c, observer_height=height_m, target_height=target_height_m, max_radius_m=radius_m)
+    except ValueError as e:
+        raise err(422, "NO_DATA_AT_OBSERVER", str(e)) from None
+    n = int(np.ceil(radius_m / grid.cell)) + 1
+    r0, r1 = max(0, r - n), min(grid.z.shape[0], r + n + 1)
+    c0, c1 = max(0, c - n), min(grid.z.shape[1], c + n + 1)
+
+    def pack(mask: np.ndarray) -> str:
+        return base64.b64encode(np.packbits(mask[r0:r1, c0:c1].astype(np.uint8), axis=None).tobytes()).decode("ascii")
+
+    def corner(rr: float, cc: float) -> dict:
+        la, lo = grid.rc_to_latlon(rr, cc)
+        return {"lat": float(la), "lon": float(lo)}
+
+    return {"site_id": site_id, "level": grid.level, "cell_m": grid.cell,
+            "observer": {"lat": lat, "lon": lon, "row": r, "col": c, "ground_m": float(vs.observer_ground_m), "height_m": height_m},
+            "radius_m": radius_m, "crop": {"row0": r0, "col0": c0, "rows": r1 - r0, "cols": c1 - c0},
+            "bounds": {"north_west": corner(r0 - 0.5, c0 - 0.5), "south_east": corner(r1 - 0.5, c1 - 0.5)},
+            "encoding": "packbits row-major, row 0 = north, 1 = set", "visible_b64": pack(vs.visible), "in_range_b64": pack(vs.in_range),
+            "visible_fraction": float(vs.visible_fraction), "elapsed_s": round(time.perf_counter() - t0, 3),
+            "accuracy": f"approximate: bilinear rays on the {grid.cell:g} m grid"}
+
+
+class RoverRouteRequest(RouteRequest):
+    rover: dict[str, Any] | None = None
+
+
+@app.post(API + "/route/rover")
+def route_rover(req: RoverRouteRequest) -> dict:
+    """Rover traverse with the Apollo walkback rule: feasible only while the crew could walk back to base on foot."""
+    from marsnav.routing.rover import plan_rover_route
+
+    grid = _route_grid(req.site_id, req.level)
+    base = _base_rc(grid, req.site_id)
+    if base is None:
+        raise err(400, "BASE_OUTSIDE_GRID", "The base lies outside the loaded terrain, so the walkback rule cannot be checked.")
+    rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
+    try:
+        return plan_rover_route(grid, rcs, base, rover=req.rover, profile=req.profile, start_utc=req.start_utc or now_iso(),
+                                astronaut=req.astronaut, return_to_base=req.return_to_start)
+    except NoPathError as e:
+        raise _no_route(e) from None
+    except ValueError as e:
+        raise err(422, "BAD_ROVER_REQUEST", str(e)) from None
+
+
+class HorizonSample(BaseModel):
+    az_rel_deg: float = Field(ge=-360, le=360)
+    elev_deg: float = Field(ge=-10, le=90)
+
+
+class SkylineRequest(BaseModel):
+    site_id: str
+    horizon: list[HorizonSample] = Field(min_length=8, max_length=2000)
+    prior: GeoPoint | None = None
+    radius_m: float = Field(3000.0, ge=100, le=20000)
+    level: Literal["L0", "L1", "L2", "L3"] | None = None
+
+
 @app.post(API + "/localize/skyline")
-def skyline(_: dict) -> dict:
-    raise _not_yet("Skyline matching")
+def skyline(req: SkylineRequest) -> dict:
+    """F43 — position and heading from the observed horizon line (elevation angle vs azimuth relative to the view direction)."""
+    import time
+
+    from marsnav.geodesy import aoi_to_geo
+    from marsnav.localize import skyline_match
+
+    grid = _route_grid(req.site_id, req.level)
+    dem = np.where(np.isfinite(grid.z), grid.z, np.nanmin(grid.z))
+    origin = (float(grid.x0 + 0.5 * grid.cell), float(grid.y0 - 0.5 * grid.cell))
+    cand = None
+    if req.prior is not None:
+        px, py = geo_to_aoi(req.prior.lat, req.prior.lon)
+        step = max(grid.cell, req.radius_m / 25.0)
+        offs = np.arange(-req.radius_m, req.radius_m + 0.5 * step, step)
+        gx, gy = np.meshgrid(float(px) + offs, float(py) + offs)
+        cand = np.column_stack([gx.ravel(), gy.ravel()])
+        lo_x, hi_x = origin[0], origin[0] + (grid.z.shape[1] - 1) * grid.cell
+        lo_y, hi_y = origin[1] - (grid.z.shape[0] - 1) * grid.cell, origin[1]
+        cand = cand[(cand[:, 0] >= lo_x) & (cand[:, 0] <= hi_x) & (cand[:, 1] >= lo_y) & (cand[:, 1] <= hi_y)]
+        if len(cand) == 0:
+            raise err(400, "OUT_OF_AOI", "The search area around the prior position lies outside the site.")
+    t0 = time.perf_counter()
+    try:
+        res = skyline_match(dem, grid.cell, [h.elev_deg for h in req.horizon], [h.az_rel_deg for h in req.horizon],
+                            candidates_xy=cand, origin_xy=origin)
+    except ValueError as e:
+        raise err(422, "BAD_HORIZON", f"{e}. Provide at least 8 horizon samples spanning the field of view.") from None
+    lat, lon = aoi_to_geo(res.x, res.y)
+    return {"position": {"lat": float(lat), "lon": float(lon)}, "xy": {"x": float(res.x), "y": float(res.y)},
+            "heading_deg": float(res.heading_deg), "score": float(res.score), "confidence": float(res.confidence),
+            "peak_ratio": float(res.peak_ratio) if np.isfinite(res.peak_ratio) else None,
+            "sigma_heading_deg": float(res.sigma_heading_deg), "cov_xy": np.asarray(res.cov_xy).tolist(), "flags": list(res.flags),
+            "level": grid.level, "candidates": int(len(res.candidates_xy)), "elapsed_s": round(time.perf_counter() - t0, 3),
+            "note": "Accuracy checked on synthetic terrain only; a flat or featureless horizon returns confidence 0 (FLAT_HORIZON)."}
 
 
 # ---------------------------------------------------------------- built web app (single-origin hosting)
