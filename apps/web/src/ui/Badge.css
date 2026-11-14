@@ -1,0 +1,100 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.badge--sm {
+  padding: 1px 6px;
+  font-size: 10px;
+}
+
+.badge--md {
+  padding: 3px 10px;
+  font-size: var(--text-2xs);
+}
+
+/* Data Fidelity Badges */
+.badge--SIMULATED {
+  background: var(--badge-simulated-bg);
+  border-color: var(--badge-simulated-border);
+  color: var(--badge-simulated-text);
+}
+
+.badge--APPROXIMATE {
+  background: var(--badge-approximate-bg);
+  border-color: var(--badge-approximate-border);
+  color: var(--badge-approximate-text);
+}
+
+.badge--REPLAY {
+  background: var(--badge-replay-bg);
+  border-color: var(--badge-replay-border);
+  color: var(--badge-replay-text);
+}
+
+.badge--LIVE {
+  background: var(--badge-live-bg);
+  border-color: var(--badge-live-border);
+  color: var(--badge-live-text);
+}
+
+/* Route Badges */
+.badge--FASTEST {
+  background: rgba(86, 180, 233, 0.16);
+  border-color: rgba(86, 180, 233, 0.45);
+  color: var(--route-fastest);
+}
+
+.badge--SAFEST {
+  background: rgba(0, 158, 115, 0.16);
+  border-color: rgba(0, 158, 115, 0.45);
+  color: #34D399;
+}
+
+.badge--BALANCED {
+  background: rgba(230, 159, 0, 0.16);
+  border-color: rgba(230, 159, 0, 0.45);
+  color: var(--route-balanced);
+}
+
+.badge--SCIENCE {
+  background: rgba(204, 121, 167, 0.16);
+  border-color: rgba(204, 121, 167, 0.45);
+  color: var(--route-science);
+}
+
+/* Status Badges */
+.badge--ok {
+  background: var(--color-ok-muted);
+  border-color: rgba(63, 185, 80, 0.4);
+  color: var(--color-ok);
+}
+
+.badge--warning {
+  background: var(--color-warning-muted);
+  border-color: rgba(210, 153, 34, 0.4);
+  color: var(--color-warning);
+}
+
+.badge--danger {
+  background: var(--color-danger-muted);
+  border-color: rgba(248, 81, 73, 0.4);
+  color: var(--color-danger);
+}
+
+.badge--neutral {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(230, 237, 243, 0.15);
+  color: var(--color-text-muted);
+}

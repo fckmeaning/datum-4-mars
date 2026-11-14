@@ -115,6 +115,16 @@ def sun_position(lat_deg: float, lon_deg: float, utc: str | datetime) -> SunStat
                     float(e), float(A % 360.0), mt.declination_deg, mt.sun_distance_au)
 
 
+def mission_sol(utc: str | datetime, lon_east_deg: float, landing_utc: str | datetime) -> int:
+    """Mission sol number at a longitude: local mean solar days (midnight to midnight) elapsed since the landing day (sol 0).
+
+    Cross-checked against the Sol Atlas site: Perseverance sol 2039 on 2026-11-14.
+    """
+    now = mars24(utc).msd + lon_east_deg / 360.0
+    start = mars24(landing_utc).msd + lon_east_deg / 360.0
+    return int(np.floor(now) - np.floor(start))
+
+
 def incidence(slope: ArrayLike, aspect: ArrayLike, elevation_deg: float, azimuth_deg: float) -> NDArray:
     """F14 — cos i on a tilted surface: cos θ·sin e + sin θ·cos e·cos(A − aspect). slope/aspect in radians."""
     e, A = np.radians(elevation_deg), np.radians(azimuth_deg)

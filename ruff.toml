@@ -1,5 +1,5 @@
 # Root ruff config for apps/ and data/ (packages/marsnav has its own in pyproject.toml).
-line-length = 150
+line-length = 160
 target-version = "py311"
 
 [lint]

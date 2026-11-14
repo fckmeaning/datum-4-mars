@@ -174,6 +174,26 @@ def list_layers(site_id: str, level: str | None = None) -> list[dict]:
     return sites.layer_metas(site_id, level)
 
 
+@app.get(API + "/sites/{site_id}/clock")
+def site_clock(site_id: str, utc: str | None = None) -> dict:
+    from marsnav.config import projection
+    from marsnav.orbits import earth_mars_light_time
+    from marsnav.sun import mission_sol, solar_time
+
+    _site_or_404(site_id)
+    mission = projection()["aoi"]["mission"]
+    t = utc or now_iso()
+    try:
+        mt = mars24(t)
+        lmst, ltst = solar_time(mission["landing_lon_east"], mt)
+        sol = mission_sol(t, mission["landing_lon_east"], mission["landing_utc"])
+        lt = earth_mars_light_time(t)
+    except ValueError:
+        raise err(400, "INVALID_TIME", "utc must be an ISO 8601 timestamp, e.g. 2026-11-14T15:30:00Z") from None
+    return {"utc": t, "mission_name": mission["name"], "mission_sol": sol, "lmst_h": lmst, "ltst_h": ltst, "ls_deg": mt.ls_deg,
+            "earth_link_one_way_s": lt["one_way_s"], "earth_link_accuracy": "approximate"}
+
+
 @app.get(API + "/sites/{site_id}/places")
 def list_site_places(site_id: str, kind: list[str] | None = Query(None)) -> list[dict]:
     _site_or_404(site_id)

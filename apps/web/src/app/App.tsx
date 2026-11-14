@@ -1,9 +1,14 @@
-// Placeholder shell. W6 owns this directory and replaces it with the real app shell (ticket T-006).
+import { useEffect } from "react";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./routes";
+import { startWorkerIfEnabled } from "../mocks/browser";
+
 export function App() {
-  return (
-    <main style={{ fontFamily: "Inter, system-ui, sans-serif", color: "#E6EDF3", background: "#0B0F14", minHeight: "100vh", padding: 24 }}>
-      <h1>AreoNav</h1>
-      <p>Mars surface navigation — scaffold is running.</p>
-    </main>
-  );
+  useEffect(() => {
+    startWorkerIfEnabled().catch((err) => {
+      console.warn("Failed to initialize MSW:", err);
+    });
+  }, []);
+
+  return <RouterProvider router={router} />;
 }

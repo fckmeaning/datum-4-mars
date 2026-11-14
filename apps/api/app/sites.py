@@ -64,17 +64,18 @@ def base_place(site_id: str) -> dict:
 
 def places(site_id: str) -> list[dict]:
     """Base + places.json from the data pipeline (W1). No coordinates are invented here."""
-    out = [base_place(site_id)]
+    by_id = {base_place(site_id)["id"]: base_place(site_id)}
     f = data_root() / site_id / "places.json"
     if f.is_file():
         items = json.loads(f.read_text(encoding="utf-8"))
         items = items.get("places", items) if isinstance(items, dict) else items
         for it in items:
-            if "lat" in it and "lon" in it and "name" in it:
+            if "id" in it and "lat" in it and "lon" in it and "name" in it:
                 x, y = geo_to_aoi(it["lat"], it["lon"])
-                out.append({"aliases": [], "description": None, "science_target": False, "pov_image": None,
-                            "source": "data/processed places.json", "kind": "gazetteer", **it, "x": float(x), "y": float(y)})
-    return out
+                by_id[it["id"]] = {"aliases": [], "description": None, "science_target": False, "pov_image": None,
+                                   "source": "data/processed places.json", "kind": "gazetteer", **it, "x": float(x), "y": float(y)}
+    base_id = base_place(site_id)["id"]
+    return [by_id[base_id], *[p for k, p in by_id.items() if k != base_id]]  # the data file overrides the built-in base entry
 
 
 def load_orbiters() -> list[dict]:

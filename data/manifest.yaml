@@ -12,3 +12,37 @@ products:
   simulated: false
   notes: AOI window read via HTTP range requests and reprojected (bilinear) to the
     AOI transverse Mercator grid.
+- id: marsnav.synthetic_dem_20m
+  family: topography
+  product_id: Gale_Synthetic_DEM_20m_v1
+  source_url: local://data/pipeline/make_l0_synthetic.py
+  retrieved_at: '2026-11-14T08:27:59Z'
+  resolution_m: 20.0
+  license: CC0-1.0 (SIMULATED)
+  credit: SIMULATED (marsnav team)
+  level: L0
+  simulated: true
+  notes: Deterministic synthetic DEM at 20 m on the Gale AOI transverse-Mercator grid.
+- id: orbiters.elements
+  family: orbits
+  product_id: Mars_Active_Orbiters_Ephemerides
+  source_url: https://ssd.jpl.nasa.gov/api/horizons.api
+  retrieved_at: '2026-11-14T08:34:19Z'
+  resolution_m: 0.0
+  license: public domain (NASA/JPL, ESA)
+  credit: NASA/JPL Horizons, ESA Space Operations, MAVEN Science Team
+  level: L0
+  simulated: false
+  notes: Keplerian orbital elements for active Mars relay and science orbiters in
+    Mars equator-of-date frame.
+- id: nasa.msl_mmgis_waypoints
+  family: geology
+  product_id: MSL_waypoints.json + MSL_waypoints_current.json
+  source_url: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
+  retrieved_at: '2026-11-14T08:39:53Z'
+  resolution_m: null
+  license: NASA public data [verify]
+  credit: NASA/JPL-Caltech (Mars Science Laboratory, MMGIS traverse waypoints)
+  level: '-'
+  simulated: false
+  notes: 1389 measured rover positions, sol 3-5073; source of places.json and traverse.geojson.

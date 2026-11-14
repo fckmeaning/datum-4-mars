@@ -1,0 +1,95 @@
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  color: var(--color-text);
+  background: var(--color-surface);
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+/* Sizes */
+.icon-button--sm {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+.icon-button--md {
+  width: 40px;
+  height: 40px;
+}
+
+.icon-button--lg {
+  width: 48px;
+  height: 48px;
+}
+
+/* Spacesuit Glove touch target size */
+.icon-button--glove {
+  width: var(--hud-touch-target);
+  height: var(--hud-touch-target);
+  border-radius: var(--radius-lg);
+  font-size: var(--hud-min-font-size);
+}
+
+/* Variants */
+.icon-button--default {
+  background: var(--color-surface-hover);
+  border-color: rgba(230, 237, 243, 0.1);
+}
+
+.icon-button--default:hover:not(:disabled) {
+  background: var(--color-surface-active);
+  border-color: rgba(230, 237, 243, 0.25);
+  color: #ffffff;
+}
+
+.icon-button--primary {
+  background: var(--color-accent);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.icon-button--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.icon-button--danger {
+  background: var(--color-danger-muted);
+  color: var(--color-danger);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.icon-button--danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: #ffffff;
+  box-shadow: var(--shadow-glow-danger);
+}
+
+.icon-button--ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.icon-button--ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Active State */
+.icon-button--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+/* Focus */
+.icon-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

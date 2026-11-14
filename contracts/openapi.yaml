@@ -81,6 +81,18 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Place" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /sites/{site_id}/clock:
+    get:
+      tags: [sites]
+      operationId: getSiteClock
+      description: Mission clock for the top bar - mission sol, local Mars time, season and one-way Earth link delay (contract v1.1, additive).
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - { $ref: "#/components/parameters/UtcOptional" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SiteClock" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /sites/{site_id}/whats-here:
     get:
       tags: [sites]
@@ -935,6 +947,19 @@ components:
         max_elevation_deg: { type: number }
         terrain_masked: { type: boolean, description: True when the terrain horizon shortened or removed part of the geometric pass }
         accuracy: { $ref: "#/components/schemas/Accuracy" }
+
+    SiteClock:
+      type: object
+      required: [utc, mission_name, mission_sol, lmst_h, ltst_h, ls_deg, earth_link_one_way_s, earth_link_accuracy]
+      properties:
+        utc: { type: string, format: date-time }
+        mission_name: { type: string }
+        mission_sol: { type: integer, description: Local solar days since the landing day (sol 0) }
+        lmst_h: { type: number }
+        ltst_h: { type: number }
+        ls_deg: { type: number }
+        earth_link_one_way_s: { type: number }
+        earth_link_accuracy: { $ref: "#/components/schemas/Accuracy" }
 
     LightTime:
       type: object

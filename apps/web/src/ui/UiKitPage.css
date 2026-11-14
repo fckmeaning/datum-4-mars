@@ -1,0 +1,133 @@
+.uikit-page {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  padding: var(--space-2xl) var(--space-xl);
+  font-family: var(--font-ui);
+}
+
+.uikit-page__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+.uikit-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  border-bottom: 1px solid rgba(230, 237, 243, 0.1);
+  padding-bottom: var(--space-xl);
+}
+
+.uikit-page__title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.uikit-page__subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.uikit-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.uikit-page__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(230, 237, 243, 0.08);
+  padding-bottom: var(--space-xs);
+}
+
+.uikit-page__section-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.uikit-page__section-desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-dim);
+}
+
+/* Swatches grid */
+.uikit-page__swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-md);
+}
+
+.uikit-page__swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid rgba(230, 237, 243, 0.08);
+}
+
+.uikit-page__swatch-color {
+  height: 48px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.uikit-page__swatch-name {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+.uikit-page__swatch-hex {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-dim);
+}
+
+.uikit-page__swatch-contrast {
+  font-size: 10px;
+  color: var(--color-ok);
+  font-family: var(--font-mono);
+}
+
+/* Row grids */
+.uikit-page__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.uikit-page__grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-xl);
+}
+
+.uikit-page__grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.uikit-page__game-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 480px;
+}

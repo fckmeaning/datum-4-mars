@@ -121,6 +121,16 @@ def test_back_to_base_and_off_route(client):
     assert o["distance_m"] == pytest.approx(0.0, abs=0.01) and o["progress_m"] == pytest.approx(50.0, abs=0.01) and o["reroute"] is False
 
 
+def test_site_clock_matches_sol_atlas_reference(client):
+    """Independent cross-check: the Sol Atlas site showed Perseverance sol 2039 and a 10m59s link delay on 2026-11-14 08:31 UTC.
+    Same formulas for the Gale/Curiosity clock: sol 5074 by hand (5213 Earth days / 1.02749)."""
+    c = client.get(f"{B}/sites/gale/clock", params={"utc": "2026-11-14T08:31:31Z"}).json()
+    assert c["mission_sol"] == 5074 and c["mission_name"].startswith("Curiosity")
+    assert 0 <= c["lmst_h"] < 24 and 0 <= c["ls_deg"] < 360
+    assert c["earth_link_one_way_s"] == pytest.approx(659.0, abs=2.0)
+    assert client.get(f"{B}/sites/nowhere/clock").status_code == 404
+
+
 def test_light_time(client):
     r = client.get(f"{B}/earth/light-time", params={"utc": UTC}).json()
     assert 180 < r["one_way_s"] < 1340 and r["accuracy"] == "approximate"

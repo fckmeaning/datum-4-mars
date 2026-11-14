@@ -85,6 +85,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sites/{site_id}/clock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Mission clock for the top bar - mission sol, local Mars time, season and one-way Earth link delay (contract v1.1, additive). */
+        get: operations["getSiteClock"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sites/{site_id}/whats-here": {
         parameters: {
             query?: never;
@@ -999,6 +1016,18 @@ export interface components {
             terrain_masked: boolean;
             accuracy: components["schemas"]["Accuracy"];
         };
+        SiteClock: {
+            /** Format: date-time */
+            utc: string;
+            mission_name: string;
+            /** @description Local solar days since the landing day (sol 0) */
+            mission_sol: number;
+            lmst_h: number;
+            ltst_h: number;
+            ls_deg: number;
+            earth_link_one_way_s: number;
+            earth_link_accuracy: components["schemas"]["Accuracy"];
+        };
         LightTime: {
             /** Format: date-time */
             utc: string;
@@ -1177,6 +1206,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Place"][];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSiteClock: {
+        parameters: {
+            query?: {
+                utc?: components["parameters"]["UtcOptional"];
+            };
+            header?: never;
+            path: {
+                site_id: components["parameters"]["SiteIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteClock"];
                 };
             };
             404: components["responses"]["NotFound"];

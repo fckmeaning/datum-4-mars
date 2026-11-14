@@ -1,0 +1,237 @@
+.hud {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  min-height: 540px;
+  background: radial-gradient(circle at center, rgba(11, 15, 20, 0.4) 0%, rgba(11, 15, 20, 0.9) 100%);
+  color: var(--color-text);
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  font-family: var(--font-ui);
+}
+
+/* Visor HUD scanlines effect subtle overlay */
+.hud::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* TOP BAR: Heading Tape & Time/Comms */
+.hud__top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  z-index: 2;
+  width: 100%;
+}
+
+.hud__heading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+}
+
+.hud__tape-svg {
+  width: 100%;
+  height: var(--hud-tape-height);
+  background: rgba(18, 24, 33, 0.7);
+  border: 1px solid rgba(86, 180, 233, 0.3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 16px rgba(86, 180, 233, 0.15);
+}
+
+.hud__heading-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: var(--hud-min-font-size);
+  font-weight: var(--font-bold);
+  color: #ffffff;
+  margin-top: var(--space-2xs);
+  background: rgba(18, 24, 33, 0.85);
+  padding: 2px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-accent);
+}
+
+/* ALERTS BANNER */
+.hud__alerts-container {
+  width: 100%;
+  max-width: 640px;
+  margin: var(--space-sm) auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.hud__alert-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  background: rgba(248, 81, 73, 0.25);
+  border: 2px solid var(--color-danger);
+  box-shadow: var(--shadow-glow-danger);
+  animation: hud-pulse 1.8s infinite;
+}
+
+.hud__alert-text {
+  font-size: var(--hud-min-font-size);
+  font-weight: var(--font-bold);
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+@keyframes hud-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.hud__recalculating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-xl);
+  background: rgba(230, 159, 0, 0.25);
+  border: 2px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: var(--hud-min-font-size);
+  font-weight: var(--font-bold);
+  box-shadow: 0 0 20px rgba(230, 159, 0, 0.4);
+}
+
+/* MIDDLE HUD / RETICLE AREA */
+.hud__middle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex: 1;
+  padding: var(--space-md) 0;
+  z-index: 2;
+}
+
+.hud__side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 200px;
+}
+
+.hud__center-reticle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* BOTTOM TELEMETRY BAR & GLOVE TOUCH CONTROLS */
+.hud__bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  z-index: 2;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.hud__widget {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: rgba(18, 24, 33, 0.85);
+  backdrop-filter: var(--blur-glass);
+  border: 1px solid rgba(230, 237, 243, 0.15);
+  min-width: 180px;
+}
+
+.hud__widget-title {
+  font-size: 13px;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hud__widget-value {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: var(--font-bold);
+  color: #ffffff;
+}
+
+.hud__widget-sub {
+  font-size: 14px;
+  color: var(--color-text-dim);
+}
+
+/* Spacesuit Glove Actions */
+.hud__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.hud__glove-btn {
+  width: var(--hud-touch-target);
+  height: var(--hud-touch-target);
+  min-width: var(--hud-touch-target);
+  min-height: var(--hud-touch-target);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-hover);
+  border: 2px solid rgba(230, 237, 243, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.hud__glove-btn:hover {
+  background: var(--color-accent);
+  border-color: #ffffff;
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.hud__glove-btn--danger {
+  background: var(--color-danger-muted);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.hud__glove-btn--danger:hover {
+  background: var(--color-danger);
+  color: #ffffff;
+}

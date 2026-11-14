@@ -13,7 +13,13 @@
     "name": "Gale crater - lower Mount Sharp",
     "center": { "lat": -4.72, "lon": 137.40 },
     "bbox_geo": { "lat_min": -4.89, "lat_max": -4.55, "lon_min": 137.27, "lon_max": 137.53 },
-    "notes": "x is approximately east and y approximately north in the AOI projection (local ENU-like metres)"
+    "notes": "x is approximately east and y approximately north in the AOI projection (local ENU-like metres)",
+    "mission": {
+      "name": "Curiosity (MSL)",
+      "landing_utc": "2012-08-06T05:17:57Z",
+      "landing_lon_east": 137.4417,
+      "source": "NASA/JPL [verify landing time to the second; sol 0 boundary is insensitive to it]"
+    }
   },
   "base_default": {
     "name": "Bradbury Landing (habitat)",
