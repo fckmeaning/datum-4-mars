@@ -14,21 +14,12 @@
   font-family: var(--font-ui);
 }
 
-/* Visor HUD scanlines effect subtle overlay */
+/* The visor shows a soft vignette only: no scanlines or overlay texture, so the data stays sharp. */
 .hud::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.15),
-    rgba(0, 0, 0, 0.15) 1px,
-    transparent 1px,
-    transparent 2px
-  );
+  inset: 0;
+  background: radial-gradient(120% 100% at 50% 40%, transparent 55%, rgba(3, 6, 10, 0.55) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -56,9 +47,9 @@
   width: 100%;
   height: var(--hud-tape-height);
   background: rgba(18, 24, 33, 0.7);
-  border: 1px solid rgba(86, 180, 233, 0.3);
+  border: 1px solid color-mix(in srgb, var(--hz-accent, #2dd4bf) 30%, transparent);
   border-radius: var(--radius-md);
-  box-shadow: 0 0 16px rgba(86, 180, 233, 0.15);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--hz-accent, #2dd4bf) 15%, transparent);
 }
 
 .hud__heading-readout {

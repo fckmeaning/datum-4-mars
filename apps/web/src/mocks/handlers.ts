@@ -3,7 +3,11 @@ import {
   MOCK_SITE_GALE,
   MOCK_LAYERS_GALE,
   MOCK_PLACES_GALE,
+  MOCK_SITE_CLOCK,
+  createMockPointReport,
+  MOCK_SOURCES,
   generateMockAlternatives,
+  createMockBackToBase,
 } from "./data";
 import type { components } from "../api/schema";
 
@@ -12,11 +16,29 @@ export const handlers = [
   http.get("/api/v1/health", () => {
     const health: components["schemas"]["Health"] = {
       status: "ok",
-      api_version: "1.0.0",
+      api_version: "1.1.0",
       contract_version: 1,
       data_levels: ["L0", "L1", "L2", "L3"],
     };
     return HttpResponse.json(health);
+  }),
+
+  // Mission Clock
+  http.get("/api/v1/sites/:siteId/clock", () => {
+    return HttpResponse.json(MOCK_SITE_CLOCK);
+  }),
+
+  // What's Here
+  http.get("/api/v1/sites/:siteId/whats-here", ({ request }) => {
+    const url = new URL(request.url);
+    const lat = parseFloat(url.searchParams.get("lat") ?? "-4.72");
+    const lon = parseFloat(url.searchParams.get("lon") ?? "137.40");
+    return HttpResponse.json(createMockPointReport(lat, lon));
+  }),
+
+  // Sources manifest
+  http.get("/api/v1/sources", () => {
+    return HttpResponse.json(MOCK_SOURCES);
   }),
 
   // Sites list
@@ -91,14 +113,30 @@ export const handlers = [
 
       const startLat = startWp?.lat ?? -4.5895;
       const startLon = startWp?.lon ?? 137.4417;
-      const endLat = endWp?.lat ?? -4.7550;
-      const endLon = endWp?.lon ?? 137.3820;
+      const endLat = endWp?.lat ?? -4.755;
+      const endLon = endWp?.lon ?? 137.382;
 
       const result = generateMockAlternatives(startLat, startLon, endLat, endLon);
       return HttpResponse.json(result);
     } catch {
       return HttpResponse.json(
         { code: "INVALID_REQUEST", message: "Failed to parse route request body" },
+        { status: 400 },
+      );
+    }
+  }),
+
+  // Route back-to-base
+  http.post("/api/v1/route/back-to-base", async ({ request }) => {
+    try {
+      const body = (await request.json()) as components["schemas"]["BackToBaseRequest"];
+      const pos = body.position ?? { lat: -4.68, lon: 137.41 };
+      const base = body.base ?? { lat: -4.5895, lon: 137.4417 };
+      const result = createMockBackToBase(pos.lat, pos.lon, base.lat, base.lon);
+      return HttpResponse.json(result);
+    } catch {
+      return HttpResponse.json(
+        { code: "INVALID_REQUEST", message: "Failed to parse back-to-base request body" },
         { status: 400 },
       );
     }

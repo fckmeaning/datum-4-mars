@@ -191,3 +191,57 @@ export const DEFAULT_ORBITERS: OrbiterDef[] = [
     badge: "APPROXIMATE",
   },
 ];
+
+/**
+ * Orbiter state returned from /api/v1/orbiters/states?utc=...
+ */
+export interface OrbiterApiState {
+  id: string;
+  utc: string;
+  lat: number;
+  lon: number;
+  alt_m: number;
+  xyz_bodyfixed_m: [number, number, number];
+  accuracy: "exact" | "approximate" | "simulated";
+}
+
+/**
+ * Metadata for known orbiters including display name and Okabe-Ito color.
+ */
+export const ORBITER_METADATA: Record<string, { name: string; color: string }> = {
+  mro: { name: "MRO", color: "#56B4E9" },
+  odyssey: { name: "2001 Mars Odyssey", color: "#E69F00" },
+  tgo: { name: "ExoMars TGO", color: "#009E73" },
+  maven: { name: "MAVEN", color: "#CC79A7" },
+  mex: { name: "Mars Express", color: "#F0E442" },
+};
+
+/**
+ * Interpolates between two orbiter states along the shortest angular path.
+ * Handles longitude wrapping across [-180, +180) degrees.
+ *
+ * @param prev Starting state
+ * @param curr Target state
+ * @param alpha Progress factor in [0, 1]
+ */
+export function interpolateOrbiterState(
+  prev: OrbiterApiState,
+  curr: OrbiterApiState,
+  alpha: number
+): { lat: number; lon: number; alt_m: number } {
+  const a = Math.max(0, Math.min(1, alpha));
+  const lat = prev.lat + (curr.lat - prev.lat) * a;
+
+  // Shortest angular difference for longitude in [-180, 180)
+  let dLon = curr.lon - prev.lon;
+  if (dLon > 180) dLon -= 360;
+  if (dLon < -180) dLon += 360;
+  let lon = prev.lon + dLon * a;
+  if (lon >= 180) lon -= 360;
+  if (lon < -180) lon += 360;
+
+  const alt_m = prev.alt_m + (curr.alt_m - prev.alt_m) * a;
+
+  return { lat, lon, alt_m };
+}
+

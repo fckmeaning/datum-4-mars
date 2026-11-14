@@ -118,7 +118,7 @@ def sun_position(lat_deg: float, lon_deg: float, utc: str | datetime) -> SunStat
 def mission_sol(utc: str | datetime, lon_east_deg: float, landing_utc: str | datetime) -> int:
     """Mission sol number at a longitude: local mean solar days (midnight to midnight) elapsed since the landing day (sol 0).
 
-    Cross-checked against the Sol Atlas site: Perseverance sol 2039 on 2026-11-14.
+    Cross-checked against an independent public mission clock: Perseverance sol 2039 on 2026-11-14.
     """
     now = mars24(utc).msd + lon_east_deg / 360.0
     start = mars24(landing_utc).msd + lon_east_deg / 360.0

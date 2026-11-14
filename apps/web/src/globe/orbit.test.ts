@@ -7,6 +7,7 @@ import {
   generateOrbitTrackPoints,
   DEFAULT_ORBITERS,
   type OrbiterDef,
+  interpolateOrbiterState,
 } from "./orbit";
 
 describe("orbit coordinate conversions", () => {
@@ -123,5 +124,48 @@ describe("placeholder orbiter kinematics", () => {
       expect(sat.radius).toBeGreaterThan(1.0);
       expect(sat.periodSeconds).toBeGreaterThan(0);
     }
+  });
+
+  describe("interpolateOrbiterState", () => {
+    const s1 = {
+      id: "mro",
+      utc: "2026-10-01T12:00:00Z",
+      lat: 10.0,
+      lon: 50.0,
+      alt_m: 300000,
+      xyz_bodyfixed_m: [0, 0, 0] as [number, number, number],
+      accuracy: "approximate" as const,
+    };
+    const s2 = {
+      id: "mro",
+      utc: "2026-10-01T12:00:10Z",
+      lat: 12.0,
+      lon: 52.0,
+      alt_m: 302000,
+      xyz_bodyfixed_m: [0, 0, 0] as [number, number, number],
+      accuracy: "approximate" as const,
+    };
+
+    it("interpolates intermediate state at alpha = 0.5", () => {
+      const mid = interpolateOrbiterState(s1, s2, 0.5);
+      expect(mid.lat).toBeCloseTo(11.0, 5);
+      expect(mid.lon).toBeCloseTo(51.0, 5);
+      expect(mid.alt_m).toBeCloseTo(301000, 2);
+    });
+
+    it("handles longitude anti-meridian wrapping correctly", () => {
+      const wrap1 = { ...s1, lon: 179.0 };
+      const wrap2 = { ...s2, lon: -179.0 }; // 2 degrees east across anti-meridian
+      const mid = interpolateOrbiterState(wrap1, wrap2, 0.5);
+      expect(Math.abs(mid.lon)).toBeCloseTo(180.0, 3);
+    });
+
+    it("clamps alpha within [0, 1]", () => {
+      const start = interpolateOrbiterState(s1, s2, -0.5);
+      expect(start.lat).toBeCloseTo(10.0, 5);
+
+      const end = interpolateOrbiterState(s1, s2, 1.5);
+      expect(end.lat).toBeCloseTo(12.0, 5);
+    });
   });
 });

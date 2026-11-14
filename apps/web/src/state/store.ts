@@ -8,6 +8,17 @@ export type GeoPoint = components["schemas"]["GeoPoint"];
 
 export type AppMode = "2d" | "3d" | "globe";
 
+/** How /globe draws the planet: the 3D globe or the flat map (see flatmap/). */
+export type PlanetView = "globe" | "flat";
+
+export interface LocalizationEllipse {
+  lat: number;
+  lon: number;
+  a_m: number;
+  b_m: number;
+  angle_deg: number;
+}
+
 export interface LayerState {
   /** Whether the layer is currently rendered on map */
   visible: boolean;
@@ -73,6 +84,18 @@ export interface AppState {
   selectedPlaceId: string | null;
   /** Directions panel open state */
   directionsOpen: boolean;
+  /** Autonomous localization fix error ellipse */
+  localizationEllipse: LocalizationEllipse | null;
+  /** Camera altitude in kilometers above the Martian datum (used by Globe, 3D terrain, and BottomBar ALT readout) */
+  altitude_km: number;
+  /** Which picture of the planet /globe shows: the 3D globe or the flat map */
+  viewMode: PlanetView;
+  /** Whether the automated 90-second mission tour is active */
+  autopilotRunning: boolean;
+  /** Active step identifier of the autopilot state machine */
+  autopilotStep: string | null;
+  /** Subtitle/caption for the active autopilot tour step */
+  autopilotCaption: string | null;
 
   // Actions
   setMode: (mode: AppMode) => void;
@@ -91,6 +114,11 @@ export interface AppState {
   setPoiOpen: (open: boolean) => void;
   setSelectedPlaceId: (id: string | null) => void;
   setDirectionsOpen: (open: boolean) => void;
+  setLocalizationEllipse: (ellipse: LocalizationEllipse | null) => void;
+  setAltitudeKm: (altitude_km: number) => void;
+  setViewMode: (viewMode: PlanetView) => void;
+  setAutopilotRunning: (running: boolean) => void;
+  setAutopilotStep: (step: string | null, caption?: string | null) => void;
   updateSettings: (settings: Partial<AppSettings>) => void;
 }
 
@@ -105,6 +133,14 @@ export const useAppStore = create<AppState>((set) => ({
     optical: { visible: true, opacity: 1.0 },
     slope: { visible: false, opacity: 0.8 },
     hazard: { visible: false, opacity: 0.8 },
+    hillshade: { visible: false, opacity: 0.8 },
+    traverse: { visible: true, opacity: 1.0 },
+    geology: { visible: false, opacity: 0.8 },
+    zones: { visible: false, opacity: 1.0 },
+    thermal: { visible: false, opacity: 0.8 },
+    topo: { visible: false, opacity: 0.8 },
+    radiation: { visible: false, opacity: 0.85 },
+    pressure: { visible: false, opacity: 0.85 },
   },
   waypoints: [
     { role: "start", dwell_min: 0, lat: -4.5895, lon: 137.4417 },
@@ -122,6 +158,12 @@ export const useAppStore = create<AppState>((set) => ({
   poiOpen: false,
   selectedPlaceId: null,
   directionsOpen: false,
+  localizationEllipse: null,
+  altitude_km: 1800,
+  viewMode: "globe",
+  autopilotRunning: false,
+  autopilotStep: null,
+  autopilotCaption: null,
   settings: {
     units: "metric",
     language: "en",
@@ -170,6 +212,15 @@ export const useAppStore = create<AppState>((set) => ({
   setPoiOpen: (poiOpen) => set({ poiOpen }),
   setSelectedPlaceId: (selectedPlaceId) => set({ selectedPlaceId }),
   setDirectionsOpen: (directionsOpen) => set({ directionsOpen }),
+  setLocalizationEllipse: (localizationEllipse) => set({ localizationEllipse }),
+  setAltitudeKm: (altitude_km) => set({ altitude_km }),
+  setViewMode: (viewMode) => set({ viewMode }),
+  setAutopilotRunning: (autopilotRunning) => set({ autopilotRunning }),
+  setAutopilotStep: (autopilotStep, caption) =>
+    set({
+      autopilotStep,
+      ...(caption !== undefined ? { autopilotCaption: caption } : {}),
+    }),
   updateSettings: (partial) =>
     set((state) => ({ settings: { ...state.settings, ...partial } })),
 }));

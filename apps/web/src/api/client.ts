@@ -1,9 +1,14 @@
 import type { components } from "./schema";
+import { apiFetch } from "../static/apiFetch";
 import {
   MOCK_SITE_GALE,
   MOCK_LAYERS_GALE,
   MOCK_PLACES_GALE,
+  MOCK_SITE_CLOCK,
+  createMockPointReport,
+  MOCK_SOURCES,
   generateMockAlternatives,
+  createMockBackToBase,
 } from "../mocks/data";
 
 export type Health = components["schemas"]["Health"];
@@ -13,6 +18,14 @@ export type Place = components["schemas"]["Place"];
 export type DataLevel = components["schemas"]["DataLevel"];
 export type AlternativesRequest = components["schemas"]["AlternativesRequest"];
 export type AlternativesResult = components["schemas"]["AlternativesResult"];
+export type RouteResult = components["schemas"]["RouteResult"];
+export type SiteClock = components["schemas"]["SiteClock"];
+export type PointReport = components["schemas"]["PointReport"];
+export type SourceEntry = components["schemas"]["SourceEntry"];
+export type ParetoRequest = components["schemas"]["ParetoRequest"];
+export type ParetoResult = components["schemas"]["ParetoResult"];
+export type BackToBaseRequest = components["schemas"]["BackToBaseRequest"];
+export type BackToBaseResult = components["schemas"]["BackToBaseResult"];
 export type PlaceKind = "gazetteer" | "mission_informal" | "base" | "user" | "coordinate";
 
 export class ApiError extends Error {
@@ -45,7 +58,8 @@ async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(url, { ...options, headers });
+    // static build: the default base is answered from the static layer (no /api request); a custom base is a real fetch
+    response = await (baseUrl === DEFAULT_BASE_URL ? apiFetch(url, { ...options, headers }) : fetch(url, { ...options, headers }));
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     throw new ApiError(`Network connection failed while calling ${endpoint}: ${errorMsg}`, 0);
@@ -57,14 +71,18 @@ async function request<T>(
     try {
       const data = await response.json();
       errorDetails = data;
-      if (data && typeof data === "object" && "message" in data) {
-        serverMessage = String(data.message);
+      if (data && typeof data === "object") {
+        if ("message" in data) {
+          serverMessage = String(data.message);
+        } else if ("detail" in data) {
+          serverMessage = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+        }
       }
     } catch {
       // response body is not json
     }
     throw new ApiError(
-      `API request to ${endpoint} failed with status ${response.status}: ${serverMessage}`,
+      `API request to ${endpoint} failed (${response.status}): ${serverMessage}`,
       response.status,
       errorDetails,
     );
@@ -80,10 +98,44 @@ export const apiClient = {
     } catch {
       return {
         status: "ok",
-        api_version: "1.0.0 (SIMULATED)",
+        api_version: "1.1.0 (SIMULATED)",
         contract_version: 1,
         data_levels: ["L0", "L1", "L2", "L3"],
       };
+    }
+  },
+
+  async getSiteClock(siteId: string, utc?: string, baseUrl?: string): Promise<SiteClock> {
+    try {
+      const query = utc ? `?utc=${encodeURIComponent(utc)}` : "";
+      return await request<SiteClock>(`/sites/${encodeURIComponent(siteId)}/clock${query}`, { method: "GET" }, baseUrl);
+    } catch {
+      return MOCK_SITE_CLOCK;
+    }
+  },
+
+  async whatsHere(siteId: string, lat: number, lon: number, utc?: string, baseUrl?: string): Promise<PointReport> {
+    try {
+      const params = new URLSearchParams({
+        lat: lat.toString(),
+        lon: lon.toString(),
+      });
+      if (utc) params.set("utc", utc);
+      return await request<PointReport>(
+        `/sites/${encodeURIComponent(siteId)}/whats-here?${params.toString()}`,
+        { method: "GET" },
+        baseUrl,
+      );
+    } catch {
+      return createMockPointReport(lat, lon);
+    }
+  },
+
+  async listSources(baseUrl?: string): Promise<SourceEntry[]> {
+    try {
+      return await request<SourceEntry[]>("/sources", { method: "GET" }, baseUrl);
+    } catch {
+      return MOCK_SOURCES;
     }
   },
 
@@ -174,10 +226,38 @@ export const apiClient = {
 
       const startLat = startWp?.lat ?? -4.5895;
       const startLon = startWp?.lon ?? 137.4417;
-      const endLat = endWp?.lat ?? -4.7550;
-      const endLon = endWp?.lon ?? 137.3820;
+      const endLat = endWp?.lat ?? -4.755;
+      const endLon = endWp?.lon ?? 137.382;
 
       return generateMockAlternatives(startLat, startLon, endLat, endLon);
+    }
+  },
+
+  async routePareto(req: ParetoRequest, baseUrl?: string): Promise<ParetoResult> {
+    return request<ParetoResult>(
+      "/route/pareto",
+      {
+        method: "POST",
+        body: JSON.stringify(req),
+      },
+      baseUrl,
+    );
+  },
+
+  async routeBackToBase(req: BackToBaseRequest, baseUrl?: string): Promise<BackToBaseResult> {
+    try {
+      return await request<BackToBaseResult>(
+        "/route/back-to-base",
+        {
+          method: "POST",
+          body: JSON.stringify(req),
+        },
+        baseUrl,
+      );
+    } catch {
+      const pos = req.position ?? { lat: -4.68, lon: 137.41 };
+      const base = req.base ?? { lat: -4.5895, lon: 137.4417 };
+      return createMockBackToBase(pos.lat, pos.lon, base.lat, base.lon);
     }
   },
 };

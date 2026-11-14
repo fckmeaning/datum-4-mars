@@ -166,7 +166,7 @@ export function UiKitPage() {
         {/* Header */}
         <header className="uikit-page__header">
           <h1 className="uikit-page__title">
-            <span>AreoNav</span>
+            <span>DATUM-4</span>
             <Badge variant="LIVE">Design System</Badge>
           </h1>
           <p className="uikit-page__subtitle">
@@ -183,32 +183,32 @@ export function UiKitPage() {
 
           <div className="uikit-page__swatches">
             <div className="uikit-page__swatch">
-              <div className="uikit-page__swatch-color" style={{ background: "#0B0F14" }} />
+              <div className="uikit-page__swatch-color" style={{ background: "#060A10" }} />
               <span className="uikit-page__swatch-name">Background</span>
-              <span className="uikit-page__swatch-hex">#0B0F14</span>
+              <span className="uikit-page__swatch-hex">#060A10</span>
             </div>
             <div className="uikit-page__swatch">
-              <div className="uikit-page__swatch-color" style={{ background: "#121821" }} />
+              <div className="uikit-page__swatch-color" style={{ background: "#0C141F" }} />
               <span className="uikit-page__swatch-name">Surface</span>
-              <span className="uikit-page__swatch-hex">#121821</span>
+              <span className="uikit-page__swatch-hex">#0C141F</span>
             </div>
             <div className="uikit-page__swatch">
-              <div className="uikit-page__swatch-color" style={{ background: "#E6EDF3" }} />
+              <div className="uikit-page__swatch-color" style={{ background: "#E8EEF5" }} />
               <span className="uikit-page__swatch-name">Text Primary</span>
-              <span className="uikit-page__swatch-hex">#E6EDF3</span>
-              <span className="uikit-page__swatch-contrast">15.2:1 (AAA)</span>
+              <span className="uikit-page__swatch-hex">#E8EEF5</span>
+              <span className="uikit-page__swatch-contrast">15:1 (AAA)</span>
             </div>
             <div className="uikit-page__swatch">
-              <div className="uikit-page__swatch-color" style={{ background: "#9DA7B3" }} />
+              <div className="uikit-page__swatch-color" style={{ background: "#93A4B6" }} />
               <span className="uikit-page__swatch-name">Text Muted</span>
-              <span className="uikit-page__swatch-hex">#9DA7B3</span>
-              <span className="uikit-page__swatch-contrast">7.4:1 (AAA)</span>
+              <span className="uikit-page__swatch-hex">#93A4B6</span>
+              <span className="uikit-page__swatch-contrast">7.3:1 (AAA)</span>
             </div>
             <div className="uikit-page__swatch">
-              <div className="uikit-page__swatch-color" style={{ background: "#E06A3B" }} />
-              <span className="uikit-page__swatch-name">Mars Ochre</span>
-              <span className="uikit-page__swatch-hex">#E06A3B</span>
-              <span className="uikit-page__swatch-contrast">5.4:1 (AA)</span>
+              <div className="uikit-page__swatch-color" style={{ background: "var(--hz-accent)" }} />
+              <span className="uikit-page__swatch-name">Accent (switchable)</span>
+              <span className="uikit-page__swatch-hex">var(--hz-accent)</span>
+              <span className="uikit-page__swatch-contrast">5:1 or better, all six</span>
             </div>
             <div className="uikit-page__swatch">
               <div className="uikit-page__swatch-color" style={{ background: "#56B4E9" }} />
@@ -292,7 +292,7 @@ export function UiKitPage() {
             <GlassPanel variant="bordered" padding="md">
               <h3 style={{ fontSize: "14px", marginBottom: "8px", fontWeight: 600 }}>Bordered GlassPanel</h3>
               <p style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                Mars Ochre border accent for active mission alerts and target selection.
+                The accent border marks active mission alerts and target selection.
               </p>
             </GlassPanel>
           </div>

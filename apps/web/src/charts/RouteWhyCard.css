@@ -1,0 +1,99 @@
+.route-why-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  background: var(--color-surface-glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--color-surface-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  width: 100%;
+}
+
+.route-why-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(230, 237, 243, 0.08);
+  padding-bottom: var(--space-xs);
+}
+
+.route-why-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.route-why-summary {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Stacked bar */
+.route-why-stacked-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.route-why-stacked-bar {
+  display: flex;
+  height: 16px;
+  width: 100%;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.route-why-segment {
+  height: 100%;
+  transition: width var(--transition-fast);
+}
+
+.route-why-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  font-size: var(--text-2xs);
+  font-family: var(--font-mono);
+}
+
+.route-why-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.route-why-legend-chip {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.route-why-sum-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-dim);
+}
+
+.route-why-sum-check--valid {
+  border-left: 3px solid var(--color-ok);
+  color: var(--color-ok);
+}

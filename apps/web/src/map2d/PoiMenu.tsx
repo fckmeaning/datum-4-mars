@@ -1,7 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import type { Place } from "../api/client";
-import { haversineMars, formatMarsDistance } from "./distance";
+import { BaseIcon, PinIcon, PlanetIcon, RoverIcon, ScienceIcon, SearchIcon } from "../icons";
+import { EmptyState, Panel, PanelSection } from "../ui/Panel";
+import { distanceMars, formatDistance } from "../ui/format";
 import { useAppStore } from "../state/store";
+import "./PoiMenu.css";
 
 interface PoiMenuProps {
   places: Place[];
@@ -10,44 +13,43 @@ interface PoiMenuProps {
   onClose: () => void;
 }
 
+type GroupKey = "base" | "science" | "mission_informal" | "gazetteer";
+
+const GROUPS: { key: GroupKey; label: string; icon: ReactElement }[] = [
+  { key: "base", label: "Base and habitat", icon: <BaseIcon size={16} /> },
+  { key: "science", label: "Science targets", icon: <ScienceIcon size={16} /> },
+  { key: "mission_informal", label: "Curiosity traverse", icon: <RoverIcon size={16} /> },
+  { key: "gazetteer", label: "Landmarks", icon: <PlanetIcon size={16} /> },
+];
+
+function groupOf(p: Place): GroupKey {
+  if (p.kind === "base") return "base";
+  if (p.science_target) return "science";
+  if (p.kind === "mission_informal") return "mission_informal";
+  return "gazetteer";
+}
+
 export function PoiMenu({ places, basePlace, onSelectPlace, onClose }: PoiMenuProps) {
   const triggerFlyTo = useAppStore((s) => s.triggerFlyTo);
+  const selectedPlaceId = useAppStore((s) => s.selectedPlaceId);
   const setSelectedPlaceId = useAppStore((s) => s.setSelectedPlaceId);
+  const [filter, setFilter] = useState("");
 
   const baseLat = basePlace?.lat ?? -4.5895;
   const baseLon = basePlace?.lon ?? 137.4417;
 
-  // Group places by kind and compute distance from base
-  const groupedPlaces = useMemo(() => {
-    const groups: Record<string, (Place & { distFromBaseM: number })[]> = {
-      base: [],
-      science: [],
-      mission_informal: [],
-      gazetteer: [],
-    };
-
+  const grouped = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const groups: Record<GroupKey, (Place & { distFromBaseM: number })[]> = { base: [], science: [], mission_informal: [], gazetteer: [] };
     for (const p of places) {
-      const dist = haversineMars(baseLat, baseLon, p.lat, p.lon);
-      const enhanced = { ...p, distFromBaseM: dist };
-
-      if (p.kind === "base") {
-        groups.base?.push(enhanced);
-      } else if (p.science_target) {
-        groups.science?.push(enhanced);
-      } else if (p.kind === "mission_informal") {
-        groups.mission_informal?.push(enhanced);
-      } else {
-        groups.gazetteer?.push(enhanced);
-      }
+      if (q && !`${p.name} ${p.description ?? ""} ${(p.aliases ?? []).join(" ")}`.toLowerCase().includes(q)) continue;
+      groups[groupOf(p)].push({ ...p, distFromBaseM: distanceMars(baseLat, baseLon, p.lat, p.lon) });
     }
-
-    // Sort each group by distance from base
-    for (const key of Object.keys(groups)) {
-      groups[key]?.sort((a, b) => a.distFromBaseM - b.distFromBaseM);
-    }
-
+    for (const g of GROUPS) groups[g.key].sort((a, b) => a.distFromBaseM - b.distFromBaseM);
     return groups;
-  }, [places, baseLat, baseLon]);
+  }, [places, filter, baseLat, baseLon]);
+
+  const total = GROUPS.reduce((n, g) => n + grouped[g.key].length, 0);
 
   const handleItemClick = (place: Place) => {
     triggerFlyTo({ lat: place.lat, lon: place.lon }, 14);
@@ -55,142 +57,45 @@ export function PoiMenu({ places, basePlace, onSelectPlace, onClose }: PoiMenuPr
     onSelectPlace(place);
   };
 
-  const groupLabels: Record<string, { label: string; icon: string }> = {
-    base: { label: "Base Camp & Habitat", icon: "🏕️" },
-    science: { label: "Primary Science Targets", icon: "🔬" },
-    mission_informal: { label: "Curiosity Traverse Landmarks", icon: "🤖" },
-    gazetteer: { label: "Planetary Gazetteer Landmarks", icon: "🪐" },
-  };
-
   return (
-    <div
-      style={{
-        background: "var(--color-surface, rgba(16, 24, 38, 0.94))",
-        backdropFilter: "blur(16px)",
-        border: "1px solid rgba(255, 255, 255, 0.12)",
-        borderRadius: "var(--radius-lg, 14px)",
-        padding: "20px",
-        color: "#E6EDF3",
-        boxShadow: "0 12px 36px rgba(0,0,0,0.6)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
-        maxHeight: "85vh",
-        overflowY: "auto",
-        width: "100%",
-        maxWidth: "380px",
-      }}
+    <Panel
+      label="Points of interest"
+      className="poi"
+      icon={<PinIcon size={20} />}
+      title="Points of interest"
+      subtitle={`${places.length} places, nearest to the base first`}
+      onClose={onClose}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>📍</span> Points of Interest
-        </h2>
-        <button
-          onClick={onClose}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#8B949E",
-            cursor: "pointer",
-            fontSize: "16px",
-          }}
-        >
-          ✕
-        </button>
-      </div>
+      <label className="poi__filter">
+        <SearchIcon size={16} />
+        <input type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter places" aria-label="Filter places" autoComplete="off" spellCheck={false} />
+      </label>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {Object.entries(groupedPlaces).map(([groupKey, items]) => {
-          if (!items || items.length === 0) return null;
-          const meta = groupLabels[groupKey] ?? { label: groupKey, icon: "📌" };
-
+      {total === 0 ? (
+        <EmptyState icon={<PinIcon size={22} />} title={places.length === 0 ? "No places loaded" : "Nothing matches"} text={places.length === 0 ? "The place list could not be loaded for this site." : "Try a shorter name, or clear the filter."} />
+      ) : (
+        GROUPS.map(({ key, label, icon }) => {
+          const items = grouped[key];
+          if (items.length === 0) return null;
           return (
-            <div key={groupKey}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "#8B949E",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                  marginBottom: "8px",
-                }}
-              >
-                <span>{meta.icon}</span>
-                <span>{meta.label}</span>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <PanelSection key={key} title={<span className="poi__group-title">{icon}{label}</span>} aside={items.length}>
+              <ul className="poi__list">
                 {items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleItemClick(item)}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      background: "rgba(255, 255, 255, 0.04)",
-                      border: "1px solid rgba(255, 255, 255, 0.06)",
-                      borderRadius: "8px",
-                      padding: "10px 12px",
-                      color: "#FFFFFF",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                      outline: "none",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(86, 180, 233, 0.15)";
-                      e.currentTarget.style.borderColor = "var(--color-accent, #56B4E9)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
-                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.06)";
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: "14px", color: "#E6EDF3" }}>
-                        {item.name}
-                      </div>
-                      {item.description && (
-                        <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#8B949E",
-                            marginTop: "2px",
-                            maxWidth: "240px",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {item.description}
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        fontFamily: "var(--font-mono, monospace)",
-                        fontSize: "12px",
-                        color: "var(--color-accent, #56B4E9)",
-                        textAlign: "right",
-                        marginLeft: "8px",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {formatMarsDistance(item.distFromBaseM)}
-                    </div>
-                  </button>
+                  <li key={item.id}>
+                    <button type="button" className={`poi__item${selectedPlaceId === item.id ? " poi__item--active" : ""}`} onClick={() => handleItemClick(item)} aria-current={selectedPlaceId === item.id || undefined}>
+                      <span className="poi__item-text">
+                        <span className="poi__item-name">{item.name}</span>
+                        {item.description ? <span className="poi__item-desc">{item.description}</span> : null}
+                      </span>
+                      <span className="poi__item-dist u-num">{key === "base" ? "Base" : formatDistance(item.distFromBaseM)}</span>
+                    </button>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </PanelSection>
           );
-        })}
-      </div>
-    </div>
+        })
+      )}
+    </Panel>
   );
 }

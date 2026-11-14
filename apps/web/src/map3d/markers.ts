@@ -14,6 +14,7 @@ export interface Marker3DItem {
   position: Vector3;
   color: string;
   description?: string;
+  normal?: Vector3;
 }
 
 export interface PlaceInput {
@@ -28,9 +29,9 @@ export interface PlaceInput {
 
 export interface WaypointInput {
   role?: "start" | "via" | "science" | "goal";
-  lat?: number;
-  lon?: number;
-  place_id?: string;
+  lat?: number | null;
+  lon?: number | null;
+  place_id?: string | null;
 }
 
 /**
@@ -48,6 +49,27 @@ export function getWaypointRoleColor(role?: string): string {
     default:
       return "#E69F00"; // Orange
   }
+}
+
+/**
+ * Computes the finite-difference terrain surface normal at a given scene (x, z) coordinate.
+ */
+export function sampleTerrainNormal(
+  terrain: TerrainRasterData,
+  sceneX: number,
+  sceneZ: number,
+  verticalExaggeration = 1.0,
+  eps = 5.0
+): Vector3 {
+  const eL = sampleTerrainElevation(terrain, sceneX - eps, sceneZ);
+  const eR = sampleTerrainElevation(terrain, sceneX + eps, sceneZ);
+  const eD = sampleTerrainElevation(terrain, sceneX, sceneZ - eps);
+  const eU = sampleTerrainElevation(terrain, sceneX, sceneZ + eps);
+
+  const dEdX = ((eR - eL) / (2 * eps)) * verticalExaggeration;
+  const dEdZ = ((eU - eD) / (2 * eps)) * verticalExaggeration;
+
+  return new Vector3(-dEdX, 1.0, -dEdZ).normalize();
 }
 
 /**
@@ -81,6 +103,11 @@ export function buildPlaceMarkers(
       color = "#E06A3B"; // Mars ochre
     }
 
+    const normal =
+      kind === "rover"
+        ? sampleTerrainNormal(terrain, sceneX, sceneZ, verticalExaggeration)
+        : undefined;
+
     return {
       id: place.id,
       name: place.name,
@@ -88,6 +115,7 @@ export function buildPlaceMarkers(
       position: new Vector3(sceneX, surfaceY + yOffset, sceneZ),
       color,
       description: place.description,
+      normal,
     };
   });
 }
@@ -105,7 +133,7 @@ export function buildWaypointMarkers(
 
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i]!;
-    if (wp.lat === undefined || wp.lon === undefined) continue;
+    if (wp.lat === undefined || wp.lat === null || wp.lon === undefined || wp.lon === null) continue;
 
     const [aoiX, aoiY] = geoToAoi(wp.lat, wp.lon);
     const sceneX = aoiX;

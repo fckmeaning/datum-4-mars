@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
-import { startWorkerIfEnabled } from "../mocks/browser";
+import { bootMocks } from "./mockBoot";
 
 export function App() {
   useEffect(() => {
-    startWorkerIfEnabled().catch((err) => {
+    bootMocks().catch((err) => {
       console.warn("Failed to initialize MSW:", err);
     });
   }, []);

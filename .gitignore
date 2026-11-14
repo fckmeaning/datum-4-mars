@@ -36,3 +36,8 @@ conveyor/runs/
 Thumbs.db
 .idea/
 .vscode/
+
+# Deploy artefacts
+apps/web/dist-sub/
+apps/web/.firebase/
+.claude/

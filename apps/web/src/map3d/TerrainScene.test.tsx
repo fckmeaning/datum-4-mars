@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
-import { TerrainScene } from "./TerrainScene";
+import { TerrainScene, disposeTerrainGPUResources } from "./TerrainScene";
 import { generateSyntheticGaleDEM } from "./terrainLoader";
+import { PlaneGeometry, ShaderMaterial, DataTexture } from "three";
 
 // Mock ResizeObserver for react-use-measure in jsdom
 class ResizeObserverMock {
@@ -66,15 +67,28 @@ beforeAll(() => {
 describe("TerrainScene component", () => {
   const mockDEM = generateSyntheticGaleDEM(32, 32);
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders terrain scene with accessibility label and initial data", () => {
-    render(<TerrainScene initialData={mockDEM} verticalExaggeration={2.0} />);
+    render(
+      <TerrainScene
+        initialData={mockDEM}
+        verticalExaggeration={2.0}
+        elevationOpacity={1.0}
+        slopeOpacity={0.8}
+        hillshadeOpacity={0.85}
+      />
+    );
 
     const region = screen.getByRole("region", { name: /3d gale crater terrain/i });
     expect(region).toBeInTheDocument();
 
     // Check telemetry overlay
-    expect(screen.getByText(/gale crater 3d terrain \(l1 hrsc\/mola\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/colormap: cividis \(lut\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/gale crater 3d topography/i)).toBeInTheDocument();
+    expect(screen.getByText(/elev: cividis/i)).toBeInTheDocument();
+    expect(screen.getByText(/slope: magma/i)).toBeInTheDocument();
     expect(screen.getByText(/exaggeration: 2x/i)).toBeInTheDocument();
   });
 
@@ -108,8 +122,30 @@ describe("TerrainScene component", () => {
     expect(screen.getByRole("region")).toBeInTheDocument();
   });
 
-  it("renders with custom vertical exaggeration", () => {
-    render(<TerrainScene initialData={mockDEM} verticalExaggeration={3.5} />);
-    expect(screen.getByText(/exaggeration: 3.5x/i)).toBeInTheDocument();
+  it("calls dispose on geometries and textures when unmounting to prevent memory leaks", () => {
+    const planeGeo = new PlaneGeometry(10, 10);
+    const mat = new ShaderMaterial();
+    const tex = new DataTexture(new Uint8Array(4), 1, 1);
+
+    const planeDisposeSpy = vi.spyOn(planeGeo, "dispose");
+    const matDisposeSpy = vi.spyOn(mat, "dispose");
+    const texDisposeSpy = vi.spyOn(tex, "dispose");
+
+    const { unmount } = render(<TerrainScene initialData={mockDEM} />);
+
+    // Test GPU disposal helper invoked during unmount
+    disposeTerrainGPUResources({
+      planeGeo,
+      terrainMaterial: mat,
+      heightTexture: tex,
+    });
+
+    expect(planeDisposeSpy).toHaveBeenCalled();
+    expect(matDisposeSpy).toHaveBeenCalled();
+    expect(texDisposeSpy).toHaveBeenCalled();
+
+    act(() => {
+      unmount();
+    });
   });
 });

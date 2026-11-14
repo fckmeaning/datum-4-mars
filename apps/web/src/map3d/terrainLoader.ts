@@ -1,6 +1,6 @@
 /**
  * terrainLoader.ts - Elevation COG reader via geotiff.js with bilinear elevation sampling,
- * synthetic DEM fallback, and Three.js DataTexture creation.
+ * automatic best-level fallback (L3 -> L2 -> L1 -> L0), overview support, and Three.js DataTexture creation.
  */
 
 import { fromUrl, type GeoTIFFImage } from "geotiff";
@@ -86,16 +86,19 @@ export function generateSyntheticGaleDEM(
 
 /**
  * Loads elevation raster data from a GeoTIFF COG URL.
+ * Supports reading a specific overview index if available.
  * Falls back gracefully to synthetic DEM if loading fails.
  */
 export async function loadElevationCOG(
-  url = "/data/gale/L1/elevation.tif"
+  url = "/data/gale/L1/elevation.tif",
+  overviewIndex = 0
 ): Promise<TerrainRasterData> {
   try {
     const tiff = await fromUrl(url);
-    const imageCount = await tiff.getImageCount();
-    // Use first image (or lowest overview for high speed)
-    const image: GeoTIFFImage = await tiff.getImage(0);
+    const count = await tiff.getImageCount();
+    const idx = Math.min(count - 1, Math.max(0, overviewIndex));
+    const image: GeoTIFFImage = await tiff.getImage(idx);
+
     const width = image.getWidth();
     const height = image.getHeight();
 
@@ -144,6 +147,34 @@ export async function loadElevationCOG(
     // Graceful fallback for offline demo or unit tests
     return generateSyntheticGaleDEM();
   }
+}
+
+/**
+ * Attempts to load the best available resolution COG (L3 -> L2 -> L1 -> L0).
+ */
+export async function loadBestElevationCOG(
+  preferredLevel?: "L3" | "L2" | "L1" | "L0"
+): Promise<TerrainRasterData> {
+  const levels = ["L3", "L2", "L1", "L0"] as const;
+  const ordered = preferredLevel
+    ? [preferredLevel, ...levels.filter((l) => l !== preferredLevel)]
+    : levels;
+
+  for (const lvl of ordered) {
+    const url = `/data/gale/${lvl}/elevation.tif`;
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) {
+        const data = await loadElevationCOG(url);
+        return data;
+      }
+    } catch {
+      // Continue to next level
+    }
+  }
+
+  // Fallback to L1 default or synthetic
+  return loadElevationCOG("/data/gale/L1/elevation.tif");
 }
 
 /**

@@ -1,7 +1,14 @@
-import { useState, useEffect, useRef, useTransition } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef, useTransition } from "react";
+import "./StartMenu.css";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../state/store";
-import { MarsGlobe } from "@/globe/MarsGlobe";
+import { loadLandingSites, DEFAULT_LANDING_SITES, type LandingSite } from "@/globe/landingSites";
+import { GlobeReadout, type GlobeTarget } from "@/ui/GlobeReadout";
+import { formatLatLon } from "@/globe/coords";
+import { PlayIcon, SettingsIcon, InfoIcon, ExitIcon } from "@/ui/Icons";
+
+// the globe (three.js, ~1 MB) loads after the menu is on screen: heading, tagline and buttons paint first (perf: load order)
+const MarsGlobe = lazy(() => import("@/globe/MarsGlobe").then((m) => ({ default: m.MarsGlobe })));
 
 interface MenuItem {
   id: string;
@@ -15,12 +22,47 @@ export function StartMenu() {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
 
+  // the globe mounts after the menu has been painted: creating its WebGL context blocks the page for a moment, and the
+  // heading and buttons should not wait for that
+  const [globeReady, setGlobeReady] = useState(false);
+  useEffect(() => {
+    let id = requestAnimationFrame(() => {
+      id = requestAnimationFrame(() => setGlobeReady(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exitNotice, setExitNotice] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const menuContainerRef = useRef<HTMLDivElement>(null);
+
+  // Interactive background globe: live cursor coordinates, click any point, click an expedition label
+  const [sites, setSites] = useState<LandingSite[]>(DEFAULT_LANDING_SITES);
+  const [hover, setHover] = useState<{ lat: number; lon: number } | null>(null);
+  const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<{ lat: number; lon: number; nonce: number } | null>(null);
+  const focusNonce = useRef(0);
+  const [descent, setDescent] = useState<LandingSite | null>(null);
+  const [viewCenter, setViewCenter] = useState<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void loadLandingSites()
+      .then((s) => alive && setSites(s))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const selectedSite = sites.find((s) => s.id === selectedSiteId) ?? null;
+  const target: GlobeTarget | null = picked
+    ? { title: "Picked point", subtitle: "Surface point", lat: picked.lat, lon: picked.lon }
+    : selectedSite
+      ? { title: selectedSite.name, subtitle: selectedSite.mission, lat: selectedSite.lat, lon: selectedSite.lon }
+      : null;
 
   const isPwa =
     typeof window !== "undefined" &&
@@ -113,357 +155,134 @@ export function StartMenu() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex, settingsOpen, menuItems]);
 
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: "100vw",
-        height: "100vh",
-        overflow: "hidden",
-        backgroundColor: "var(--color-bg, #080C10)",
-        color: "var(--color-text, #E6EDF3)",
-        fontFamily: "var(--font-ui, system-ui, sans-serif)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
-    >
-      {/* Background: W7 MarsGlobe or Starfield fallback */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          zIndex: 0,
-          pointerEvents: "auto",
-        }}
-      >
-        <MarsGlobe interactive autoRotate />
-      </div>
+  const itemIcon = (id: string) =>
+    id === "start" ? <PlayIcon size={18} /> : id === "settings" ? <SettingsIcon size={18} /> : id === "about" ? <InfoIcon size={18} /> : <ExitIcon size={18} />;
 
-      {/* Header overlay */}
-      <header
-        style={{
-          position: "relative",
-          zIndex: 10,
-          padding: "32px 48px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "linear-gradient(180deg, rgba(8,12,16,0.8) 0%, transparent 100%)",
-        }}
-      >
+  return (
+    <div className="start">
+      {/* Background: the interactive globe */}
+      <div className="start__globe">
+        {globeReady && (
+        <Suspense fallback={null}>
+        <MarsGlobe
+          interactive
+          autoRotate
+          landingSites={sites}
+          pickedPoint={picked}
+          focusPoint={focus}
+          onHover={setHover}
+          onViewCenter={setViewCenter}
+          onPick={(p) => {
+            setPicked(p);
+            setSelectedSiteId(null);
+          }}
+          onSiteSelect={(id) => {
+            const s = sites.find((x) => x.id === id);
+            if (s) setDescent(s);
+          }}
+          aoi={descent ? { lat: descent.lat, lon: descent.lon } : undefined}
+          flyIn={!!descent}
+          onFlyInComplete={() => descent && navigate(`/site/${descent.id}`)}
+        />
+        </Suspense>
+        )}
+      </div>
+      <div className="start__veil" aria-hidden="true" />
+
+      <header className="start__header">
         <div>
-          <div
-            style={{
-              fontFamily: "var(--font-mono, monospace)",
-              fontSize: "12px",
-              letterSpacing: "3px",
-              color: "var(--color-accent, #56B4E9)",
-              textTransform: "uppercase",
-              marginBottom: "4px",
-            }}
-          >
+          <div className="start__eyebrow">
+            <i aria-hidden="true" />
             NASA Space Apps 2026 · Challenge
           </div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "clamp(2rem, 5vw, 3.5rem)",
-              fontWeight: 800,
-              letterSpacing: "-1px",
-              background: "linear-gradient(135deg, #FFFFFF 30%, #56B4E9 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            AreoNav
-          </h1>
-          <div
-            style={{
-              fontFamily: "var(--font-ui, sans-serif)",
-              fontSize: "14px",
-              color: "#8B949E",
-              marginTop: "4px",
-            }}
-          >
-            Hyperlocal Surface Navigation & Mission Planner · Gale Crater
-          </div>
+          <h1 className="start__title">DATUM-4</h1>
+          <div className="start__tagline">Surface navigation & EVA planning · Gale Crater</div>
         </div>
 
-        <div
-          style={{
-            fontFamily: "var(--font-mono, monospace)",
-            fontSize: "12px",
-            background: "rgba(22, 27, 34, 0.75)",
-            backdropFilter: "blur(8px)",
-            padding: "8px 16px",
-            borderRadius: "var(--radius-lg, 8px)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: "#8B949E",
-          }}
-        >
-          AOI: -4.72° S, 137.40° E · Gale
+        <div className="start__chip">
+          <span translate="no" data-testid="start-chip">
+            {hover
+              ? `CURSOR ${formatLatLon(hover.lat, hover.lon, 3)}`
+              : viewCenter
+                ? `VIEW CENTRE ${formatLatLon(viewCenter.lat, viewCenter.lon, 2)}`
+                : "Mars"}
+          </span>
         </div>
       </header>
 
-      {/* Main Menu Box */}
-      <main
-        style={{
-          position: "relative",
-          zIndex: 10,
-          padding: "0 48px",
-          maxWidth: "460px",
-          marginBottom: "auto",
-          marginTop: "40px",
-        }}
-      >
-        <div
-          ref={menuContainerRef}
-          role="menu"
-          aria-label="Main menu"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-          }}
-        >
-          {menuItems.map((item, index) => {
-            const isSelected = selectedIndex === index;
-            return (
-              <button
-                key={item.id}
-                role="menuitem"
-                tabIndex={0}
-                onClick={item.action}
-                onMouseEnter={() => setSelectedIndex(index)}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  textAlign: "left",
-                  padding: "16px 20px",
-                  borderRadius: "var(--radius-lg, 12px)",
-                  background: isSelected
-                    ? "linear-gradient(90deg, rgba(86, 180, 233, 0.25) 0%, rgba(22, 27, 34, 0.85) 100%)"
-                    : "rgba(16, 24, 38, 0.65)",
-                  backdropFilter: "blur(12px)",
-                  border: isSelected
-                    ? "1px solid var(--color-accent, #56B4E9)"
-                    : "1px solid rgba(255, 255, 255, 0.08)",
-                  boxShadow: isSelected
-                    ? "0 4px 20px rgba(86, 180, 233, 0.2)"
-                    : "none",
-                  cursor: "pointer",
-                  color: "#FFFFFF",
-                  transition: "all 0.15s ease",
-                  outline: "none",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    width: "100%",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: isSelected ? "var(--color-accent, #56B4E9)" : "transparent",
-                      boxShadow: isSelected ? "0 0 8px #56B4E9" : "none",
-                      transition: "all 0.15s ease",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: "18px",
-                      fontWeight: 600,
-                      letterSpacing: "0.2px",
-                      color: isSelected ? "#FFFFFF" : "#E6EDF3",
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#8B949E",
-                    marginTop: "4px",
-                    marginLeft: "16px",
-                  }}
-                >
-                  {item.sublabel}
-                </div>
-              </button>
-            );
-          })}
+      <main className="start__main">
+        <div ref={menuContainerRef} role="menu" aria-label="Main menu" className="start__menu">
+          {menuItems.map((item, index) => (
+            <button
+              key={item.id}
+              role="menuitem"
+              tabIndex={0}
+              onClick={item.action}
+              onMouseEnter={() => setSelectedIndex(index)}
+              className={`start__item${selectedIndex === index ? " is-sel" : ""}`}
+              style={{ "--i": index } as React.CSSProperties}
+            >
+              <span className="start__icon">{itemIcon(item.id)}</span>
+              <span>
+                <span className="start__label">{item.label}</span>
+                <span className="start__sub">{item.sublabel}</span>
+              </span>
+            </button>
+          ))}
         </div>
 
-        {exitNotice && (
-          <div
-            style={{
-              marginTop: "16px",
-              padding: "12px 16px",
-              background: "rgba(227, 179, 65, 0.15)",
-              border: "1px solid #E3B341",
-              borderRadius: "8px",
-              color: "#F0883E",
-              fontSize: "13px",
-            }}
-          >
-            {exitNotice}
-          </div>
-        )}
+        {exitNotice && <div className="start__notice">{exitNotice}</div>}
       </main>
 
-      {/* Footer / Keyboard hints */}
-      <footer
-        style={{
-          position: "relative",
-          zIndex: 10,
-          padding: "24px 48px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "12px",
-          color: "#6E7681",
-          fontFamily: "var(--font-mono, monospace)",
-          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-          background: "rgba(8, 12, 16, 0.75)",
-        }}
-      >
-        <div style={{ display: "flex", gap: "16px" }}>
-          <span><kbd style={{ background: "#21262D", padding: "2px 6px", borderRadius: "4px" }}>↑</kbd> <kbd style={{ background: "#21262D", padding: "2px 6px", borderRadius: "4px" }}>↓</kbd> Navigate</span>
-          <span><kbd style={{ background: "#21262D", padding: "2px 6px", borderRadius: "4px" }}>Enter</kbd> Select</span>
+      <footer className="start__footer">
+        <div className="start__keys">
+          <span>
+            <kbd>↑</kbd> <kbd>↓</kbd> Navigate
+          </span>
+          <span>
+            <kbd>Enter</kbd> Select
+          </span>
         </div>
-        <div>
-          <span>AreoNav v1.0 · PWA Ready</span>
-        </div>
+        <span className="start__version">DATUM-4 v1.0 · PWA Ready</span>
       </footer>
 
-      {/* Settings Modal */}
       {settingsOpen && (
-        <div
-          role="dialog"
-          aria-label="Settings modal"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-          }}
-          onClick={() => setSettingsOpen(false)}
-        >
-          <div
-            style={{
-              background: "var(--color-surface, #161B22)",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              borderRadius: "var(--radius-lg, 16px)",
-              padding: "32px",
-              width: "min(440px, 90vw)",
-              color: "#E6EDF3",
-              boxShadow: "0 16px 40px rgba(0,0,0,0.6)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "20px" }}>Settings</h2>
-              <button
-                onClick={() => setSettingsOpen(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#8B949E",
-                  cursor: "pointer",
-                  fontSize: "18px",
-                }}
-              >
+        <div role="dialog" aria-label="Settings modal" className="start__scrim" onClick={() => setSettingsOpen(false)}>
+          <div className="start__dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="start__dialog-head">
+              <h2>Settings</h2>
+              <button className="start__close" onClick={() => setSettingsOpen(false)} aria-label="Close settings">
                 ✕
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
-                <label style={{ display: "block", fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>
-                  Units
-                </label>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button
-                    onClick={() => updateSettings({ units: "metric" })}
-                    style={{
-                      flex: 1,
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      background: settings.units === "metric" ? "var(--color-accent, #56B4E9)" : "#21262D",
-                      color: settings.units === "metric" ? "#080C10" : "#E6EDF3",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
+                <span className="start__field">Units</span>
+                <div className="start__segment">
+                  <button aria-pressed={settings.units === "metric"} onClick={() => updateSettings({ units: "metric" })}>
                     Metric (m, km, °C)
                   </button>
-                  <button
-                    onClick={() => updateSettings({ units: "imperial" })}
-                    style={{
-                      flex: 1,
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      background: settings.units === "imperial" ? "var(--color-accent, #56B4E9)" : "#21262D",
-                      color: settings.units === "imperial" ? "#080C10" : "#E6EDF3",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
+                  <button aria-pressed={settings.units === "imperial"} onClick={() => updateSettings({ units: "imperial" })}>
                     Imperial (ft, mi, °F)
                   </button>
                 </div>
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>
-                  Reduced Motion
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontSize: "14px", color: "#8B949E" }}>
+                <span className="start__field">Reduced Motion</span>
+                <label className="start__check">
                   <input
                     type="checkbox"
                     checked={settings.reducedMotion}
                     onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
-                    style={{ cursor: "pointer", width: "18px", height: "18px" }}
                   />
                   Disable fast map fly-to animations
                 </label>
               </div>
 
-              <div style={{ marginTop: "12px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => setSettingsOpen(false)}
-                  style={{
-                    padding: "8px 20px",
-                    background: "#238636",
-                    color: "#FFFFFF",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
+              <div className="start__dialog-foot">
+                <button className="start__done" onClick={() => setSettingsOpen(false)}>
                   Done
                 </button>
               </div>
@@ -471,6 +290,15 @@ export function StartMenu() {
           </div>
         </div>
       )}
+      <GlobeReadout
+        hover={hover}
+        target={target}
+        onOpen={() => navigate("/globe")}
+        onClear={() => {
+          setPicked(null);
+          setSelectedSiteId(null);
+        }}
+      />
     </div>
   );
 }

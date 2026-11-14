@@ -1,69 +1,21 @@
 import { lazy, Suspense } from "react";
+import { RouteError } from "./RouteError";
+import { AutopilotHost } from "./AutopilotHost";
+import { loaders } from "./prefetch";
+import { BASE_PREFIX } from "../static/config";
 import { createBrowserRouter, Navigate, useNavigate } from "react-router-dom";
-import { StartMenu } from "../pages/StartMenu";
-import { MarsGlobe } from "@/globe/MarsGlobe";
-import { UiKitPage } from "@/ui/UiKitPage";
 
-const MissionPlanner = lazy(() =>
-  import("../pages/MissionPlanner").then((m) => ({ default: m.MissionPlanner })),
-);
-const AboutPage = lazy(() =>
-  import("../pages/AboutPage").then((m) => ({ default: m.AboutPage })),
-);
-const MethodsPage = lazy(() =>
-  import("../pages/MethodsPage").then((m) => ({ default: m.MethodsPage })),
-);
-
-// Globe route container
-function GlobeContainer() {
-  const navigate = useNavigate();
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: "100vw",
-        height: "100vh",
-        background: "#080C10",
-        color: "#FFFFFF",
-      }}
-    >
-      <MarsGlobe
-        flyIn
-        onFlyInComplete={() => navigate("/planner")}
-        interactive
-      />
-
-      {/* Overlay skip button */}
-      <div
-        style={{
-          position: "absolute",
-          top: "24px",
-          right: "24px",
-          zIndex: 50,
-          display: "flex",
-          gap: "12px",
-        }}
-      >
-        <button
-          onClick={() => navigate("/planner")}
-          style={{
-            background: "var(--color-accent, #56B4E9)",
-            color: "#080C10",
-            border: "none",
-            borderRadius: "8px",
-            padding: "10px 18px",
-            fontWeight: 700,
-            cursor: "pointer",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-          }}
-        >
-          Skip to Planner →
-        </button>
-      </div>
-    </div>
-  );
-}
+// every screen is its own chunk (three/r3f and OpenLayers are split again in vite.config.ts); `loaders` is shared with the
+// prefetcher, so a screen warmed on idle or on hover is the very module the navigation then needs
+const StartMenu = lazy(loaders.start);
+const GlobeScreen = lazy(loaders.globe);
+const SiteDetail = lazy(loaders.site);
+const AboutPage = lazy(loaders.about);
+const MethodsPage = lazy(loaders.methods);
+const UiKitPage = lazy(loaders.uiKit);
+// data views: the comparison page and the Ctrl+K palette (own chunks, not part of the prefetcher)
+const ComparePage = lazy(() => import("../compare/ComparePage").then((m) => ({ default: m.ComparePage })));
+const PaletteHost = lazy(() => import("../palette/PaletteHost").then((m) => ({ default: m.PaletteHost })));
 
 // HUD placeholder (W8)
 function HudPlaceholder() {
@@ -72,8 +24,8 @@ function HudPlaceholder() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#05080C",
-        color: "#00FF66",
+        background: "#070b10",
+        color: "var(--hz-accent, #2dd4bf)",
         fontFamily: "monospace",
         padding: "48px",
         display: "flex",
@@ -82,17 +34,17 @@ function HudPlaceholder() {
         justifyContent: "center",
       }}
     >
-      <div style={{ border: "1px solid #00FF66", padding: "32px", borderRadius: "12px", maxWidth: "480px", textAlign: "center" }}>
+      <div style={{ border: "1px solid var(--hz-accent, #2dd4bf)", padding: "32px", borderRadius: 0, maxWidth: "480px", textAlign: "center" }}>
         <h2 style={{ margin: "0 0 16px 0" }}>HELMET HUD MODE</h2>
-        <p style={{ color: "#88CC99", fontSize: "14px", lineHeight: "1.6" }}>
+        <p style={{ color: "var(--hz-dim, #8ea3b8)", fontSize: "14px", lineHeight: "1.6" }}>
           Astronaut Visor & High-Contrast Navigation HUD. Integration lane: W8.
         </p>
         <button
-          onClick={() => navigate("/planner")}
+          onClick={() => navigate("/site/gale")}
           style={{
             marginTop: "16px",
-            background: "#00FF66",
-            color: "#05080C",
+            background: "var(--hz-accent, #2dd4bf)",
+            color: "#04141b",
             border: "none",
             padding: "8px 16px",
             fontWeight: 700,
@@ -100,7 +52,7 @@ function HudPlaceholder() {
             borderRadius: "6px",
           }}
         >
-          Return to Planner
+          Return to expedition
         </button>
       </div>
     </div>
@@ -109,7 +61,11 @@ function HudPlaceholder() {
 
 // UI-Kit route container (W8)
 function UiKitContainer() {
-  return <UiKitPage />;
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <UiKitPage />
+    </Suspense>
+  );
 }
 
 const LoadingFallback = () => (
@@ -124,33 +80,67 @@ const LoadingFallback = () => (
       fontFamily: "system-ui, sans-serif",
     }}
   >
-    <span>Loading AreoNav...</span>
+    <span>Loading DATUM-4...</span>
   </div>
 );
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <StartMenu />,
-  },
+    element: (
+      <>
+        <AutopilotHost />
+        <Suspense fallback={null}>
+          <PaletteHost />
+        </Suspense>
+      </>
+    ),
+    children: [
   {
-    path: "/planner",
+    path: "/",
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={<LoadingFallback />}>
-        <MissionPlanner />
+        <StartMenu />
+      </Suspense>
+    ),
+  },
+  // the old stand-alone planner is gone: its job lives on the expedition page
+  { path: "/planner", element: <Navigate to="/site/gale" replace /> },
+  {
+    path: "/site/:id",
+    errorElement: <RouteError />,
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <SiteDetail />
       </Suspense>
     ),
   },
   {
     path: "/globe",
-    element: <GlobeContainer />,
+    errorElement: <RouteError />,
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <GlobeScreen />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/compare",
+    errorElement: <RouteError />,
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <ComparePage />
+      </Suspense>
+    ),
   },
   {
     path: "/hud",
+    errorElement: <RouteError />,
     element: <HudPlaceholder />,
   },
   {
     path: "/methods",
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={<LoadingFallback />}>
         <MethodsPage />
@@ -159,6 +149,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/about",
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={<LoadingFallback />}>
         <AboutPage />
@@ -167,10 +158,13 @@ export const router = createBrowserRouter([
   },
   {
     path: "/ui-kit",
+    errorElement: <RouteError />,
     element: <UiKitContainer />,
   },
   {
     path: "*",
     element: <Navigate to="/" replace />,
   },
-]);
+    ],
+  },
+], { basename: BASE_PREFIX || undefined }); // BASE_PREFIX is "" at the site root, "/repo" under a sub-path (VITE_BASE)

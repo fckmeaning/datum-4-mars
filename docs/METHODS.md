@@ -1,6 +1,6 @@
-# AreoNav (marsnav) — Scientific Methods and Mathematical Core (F01–F53)
+# Datum-4 (marsnav) — Scientific Methods and Mathematical Core (F01–F53)
 
-This document provides a transparent, peer-reviewed engineering description of all mathematical functions implemented in AreoNav (`packages/marsnav` and `apps/api`). Every function is written in SI units, vectorized with NumPy/Numba, and verified with deterministic unit tests.
+This document provides a transparent, peer-reviewed engineering description of all mathematical functions implemented in Datum-4 (`packages/marsnav` and `apps/api`). Every function is written in SI units, vectorized with NumPy/Numba, and verified with deterministic unit tests.
 
 ---
 
@@ -10,10 +10,10 @@ This document provides a transparent, peer-reviewed engineering description of a
    - Input timestamp: `2000-01-06T00:00:00Z` (UTC).
    - Golden reference: Julian Date $\text{JD}_{\text{UT}} = 2451550.0$, $\Delta t_{\text{TT}} = 4.500743\text{ d}$, $M = 21.74558^\circ$, $L_s = 277.1876^\circ$, $\text{EOT} = -5.187746^\circ$, $\text{MTC} = 23.99425\text{ h}$.
    - Validation test: `test_f11_mars24_reference_epoch` in `packages/marsnav/tests/sun/test_sun.py`.
-2. **Sol Atlas Cross-Check (F52 Earth–Mars Light Time & Mission Sol)**:
-   - On `2026-11-14T08:31:31Z`, independent reference site Sol Atlas reported Perseverance sol 2039 and a one-way light time delay of $10\text{m }59\text{s}$ ($659\text{ s}$).
+2. **Independent Cross-Check (F52 Earth–Mars Light Time & Mission Sol)**:
+   - On `2026-11-14T08:31:31Z`, an independent public mission-clock site reported Perseverance sol 2039 and a one-way light time delay of $10\text{m }59\text{s}$ ($659\text{ s}$).
    - Applying our Mars24 algorithm for Curiosity at Gale Crater yields **Sol 5074** and an identical link delay of $659.0 \pm 2.0\text{ s}$ ($0.66\text{ AU}$).
-   - Validation test: `test_site_clock_matches_sol_atlas_reference` in `apps/api/tests/test_api.py`.
+   - Validation test: `test_site_clock_matches_independent_reference` in `apps/api/tests/test_api.py`.
 3. **95% Error Ellipse Statistical Coverage (F41)**:
    - 1,000 Monte-Carlo synthetic trials with Gaussian observation noise verify empirical 95% ellipse containment within $95\% \pm 3\%$ (at 2-sigma significance).
    - Validation test: `test_f41_ellipse_coverage_95` in `packages/marsnav/tests/localize/test_localize.py`.

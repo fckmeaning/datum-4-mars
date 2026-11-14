@@ -1,0 +1,133 @@
+/* Opening title card of an expedition (GTA-style location reveal) and the pin pulse. */
+
+.loc-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.25) 55%, transparent 80%);
+  animation: loc-intro-fade 0.7s ease 2.9s forwards;
+}
+.loc-intro__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 13vh;
+  background: #000;
+}
+.loc-intro__bar--top {
+  top: 0;
+  animation: loc-bar-top 3.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.loc-intro__bar--bottom {
+  bottom: 0;
+  animation: loc-bar-bottom 3.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.loc-intro__card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 0 24px;
+  text-align: center;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.9);
+}
+.loc-intro__kicker {
+  font: 600 14px var(--hz-label, system-ui);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--hz-accent, #ff5b2e);
+  opacity: 0;
+  animation: loc-rise 0.9s ease 0.5s forwards;
+}
+.loc-intro__title {
+  margin: 0;
+  font: 900 clamp(38px, 9vw, 120px) / 1 var(--hz-display, system-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--hz-accent, #ff5b2e) 60%, transparent);
+  opacity: 0;
+  filter: blur(18px);
+  animation: loc-title 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards;
+}
+.loc-intro__rule {
+  width: 0;
+  height: 3px;
+  background: var(--hz-accent, #ff5b2e);
+  box-shadow: 0 0 18px var(--hz-accent, #ff5b2e);
+  animation: loc-rule 1s cubic-bezier(0.2, 0.8, 0.2, 1) 1.4s forwards;
+}
+.loc-intro__coords,
+.loc-intro__line {
+  font: 600 clamp(12px, 1.6vw, 20px) var(--hz-label, system-ui);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #e6edf3;
+  opacity: 0;
+  animation: loc-rise 0.9s ease 1.7s forwards;
+}
+.loc-intro__line {
+  color: var(--hz-dim, #8ea3b8);
+  animation-delay: 1.95s;
+}
+
+@keyframes loc-bar-top {
+  0% { transform: translateY(-100%); }
+  18%, 82% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+@keyframes loc-bar-bottom {
+  0% { transform: translateY(100%); }
+  18%, 82% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+@keyframes loc-title {
+  0% { opacity: 0; filter: blur(18px); letter-spacing: 0.7em; transform: scale(1.18); }
+  100% { opacity: 1; filter: blur(0); letter-spacing: 0.12em; transform: scale(1); }
+}
+@keyframes loc-rule {
+  to { width: min(46vw, 560px); }
+}
+@keyframes loc-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes loc-intro-fade {
+  to { opacity: 0; }
+}
+
+/* ---------- pin pulse on the 2D map: three blue rings go out from the dropped pin ---------- */
+.pin-ping {
+  position: relative;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.pin-ping i {
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 60px;
+  height: 60px;
+  border: 2px solid #3aa0ff;
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 14px rgba(58, 160, 255, 0.7);
+  animation: pin-ping 2.4s cubic-bezier(0.15, 0.6, 0.3, 1) infinite;
+}
+.pin-ping i:nth-child(2) { animation-delay: 0.8s; }
+.pin-ping i:nth-child(3) { animation-delay: 1.6s; }
+@keyframes pin-ping {
+  0% { transform: scale(0.15); opacity: 0.95; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loc-intro,
+  .pin-ping i {
+    animation: none;
+  }
+}

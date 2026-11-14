@@ -1,0 +1,462 @@
+/* Sky, Profile, Mission and Compare views. Colours come from the theme tokens (styles/tokens.css, styles/horizon.css) only. */
+
+.sky-view,
+.profile-view,
+.mission-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 18px 22px 40px;
+  color: var(--hz-text);
+  font-family: var(--hz-label);
+  scrollbar-width: thin;
+}
+
+/* six tabs and the clock: tighter tabs so the row does not overflow */
+html .site-detail__tabs button[role="tab"] {
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
+/* ---------- header and controls ---------- */
+.vhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 24px;
+  margin-bottom: 14px;
+}
+.vhead__kicker {
+  font: 600 10.5px var(--hz-label);
+  letter-spacing: 0.18em;
+  color: var(--hz-accent);
+}
+.vhead h2 {
+  margin: 4px 0 2px;
+  font: 600 24px var(--hz-display);
+  letter-spacing: -0.3px;
+}
+.vhead__sub {
+  font-size: 12.5px;
+  color: var(--hz-dim);
+}
+.vcontrols {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+.vcontrols label,
+.vsliders label {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  font-size: 11.5px;
+  color: var(--hz-dim);
+}
+.vcontrols label b,
+.vsliders label b {
+  color: var(--hz-text);
+  font-weight: 600;
+  margin-left: 6px;
+}
+.vcontrols input[type="range"],
+.vsliders input[type="range"] {
+  width: 100%;
+  accent-color: var(--hz-accent);
+}
+.vsliders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-bottom: 8px;
+}
+.vbtn {
+  padding: 7px 14px;
+  border: 1px solid var(--hz-line);
+  border-radius: var(--hz-radius-sm);
+  background: color-mix(in srgb, var(--hz-accent) 8%, transparent);
+  color: var(--hz-text);
+  font: 600 12px var(--hz-label);
+  cursor: pointer;
+}
+.vbtn:hover:not(:disabled) {
+  border-color: var(--hz-accent);
+  background: color-mix(in srgb, var(--hz-accent) 16%, transparent);
+}
+.vbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.vbtn:focus-visible {
+  outline: 2px solid var(--hz-accent);
+  outline-offset: 2px;
+}
+.vbtn--primary {
+  background: var(--hz-accent);
+  color: var(--color-text-inverse);
+  border-color: var(--hz-accent);
+}
+.vbtn--primary:hover:not(:disabled) {
+  background: var(--hz-accent-2);
+}
+
+/* ---------- cards ---------- */
+.vgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.vgrid--one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.vcard {
+  min-width: 0;
+  padding: 14px 16px 12px;
+  background: linear-gradient(180deg, var(--hz-panel-2), var(--hz-panel));
+  border: 1px solid var(--hz-line);
+  border-radius: var(--hz-radius);
+  box-shadow: inset 0 2px 0 var(--hz-accent), 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+.vcard--wide {
+  grid-column: 1 / -1;
+}
+.vcard header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.vcard h3 {
+  margin: 0;
+  font: 600 14px var(--hz-display);
+  letter-spacing: 0.01em;
+}
+.vcard__note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--hz-dim);
+}
+.vcard p {
+  margin: 6px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.vbig {
+  margin: 2px 0 4px;
+  font: 600 38px var(--hz-display);
+  color: var(--hz-accent);
+}
+.vbadge {
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  font: 600 9.5px var(--hz-label);
+  letter-spacing: 0.12em;
+}
+.vbadge--modeled {
+  color: var(--badge-simulated-text);
+}
+.vbadge--assumption {
+  color: var(--color-warning);
+}
+.vbadge--computed {
+  color: var(--hz-accent);
+}
+.vbadge--measured {
+  color: var(--color-ok);
+}
+.vfoot {
+  margin: 14px 2px 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--hz-dim);
+}
+.vreason {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--hz-dim);
+}
+.vempty {
+  max-width: 560px;
+  margin: 70px auto;
+  padding: 22px 26px;
+  background: linear-gradient(180deg, var(--hz-panel-2), var(--hz-panel));
+  border: 1px solid var(--hz-line);
+  border-radius: var(--hz-radius);
+  box-shadow: inset 0 2px 0 var(--hz-accent);
+}
+.vempty h2 {
+  margin: 0 0 8px;
+  font: 600 20px var(--hz-display);
+}
+.vempty p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--hz-dim);
+}
+
+/* ---------- verdict ---------- */
+.vverdict {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font: 700 12px var(--hz-label);
+  letter-spacing: 0.1em;
+}
+.vverdict--READY {
+  color: var(--color-ok);
+}
+.vverdict--CAUTION {
+  color: var(--color-warning);
+}
+.vverdict--NO_GO {
+  color: var(--color-danger);
+}
+
+/* ---------- facts, stats, tables ---------- */
+.vfacts {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  align-content: start;
+  font-size: 12.5px;
+}
+.vfacts div {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 8px;
+}
+.vfacts dt {
+  color: var(--hz-dim);
+}
+.vfacts dd {
+  margin: 0;
+}
+.vstats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 16px;
+  margin: 0 0 12px;
+}
+.vstats div {
+  padding: 8px 10px;
+  border: 1px solid var(--hz-line);
+  border-radius: var(--hz-radius-sm);
+  background: color-mix(in srgb, var(--hz-accent) 4%, transparent);
+}
+.vstats dt {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--hz-dim);
+}
+.vstats dd {
+  margin: 3px 0 0;
+  font: 600 16px var(--hz-display);
+}
+.vtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.vtable th,
+.vtable td {
+  padding: 7px 8px;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--hz-text) 8%, transparent);
+  vertical-align: top;
+}
+.vtable thead th {
+  font: 600 10.5px var(--hz-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hz-dim);
+}
+.vtable tbody th {
+  font-weight: 600;
+}
+.vtable td.is-best {
+  color: var(--hz-accent);
+  font-weight: 600;
+}
+.vrow--launch th {
+  color: var(--hz-accent);
+}
+.vrow--opposition th {
+  color: var(--color-info);
+}
+.vrow--conjunction th {
+  color: var(--color-warning);
+}
+.vtag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--hz-line);
+  font-size: 10.5px;
+  color: var(--hz-dim);
+}
+.vtag--warn {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
+/* ---------- charts ---------- */
+.vchart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+.vchart__grid {
+  stroke: color-mix(in srgb, var(--hz-text) 10%, transparent);
+  stroke-width: 1;
+}
+.vchart__grid--v {
+  stroke-dasharray: 2 4;
+}
+.vchart__tick {
+  fill: var(--hz-dim);
+  font: 10.5px var(--hz-label);
+}
+.vchart__axis {
+  fill: var(--hz-dim);
+  font: 10px var(--hz-label);
+  letter-spacing: 0.06em;
+}
+.vchart__line {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.vchart__ref {
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+}
+.vchart__reftext,
+.vchart__marktext,
+.vchart__band {
+  font: 600 10px var(--hz-label);
+}
+.vchart__band {
+  fill: var(--hz-dim);
+}
+.vchart__mark {
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+.vchart__cursor {
+  stroke: var(--hz-text);
+  stroke-opacity: 0.5;
+}
+.vchart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--hz-dim);
+}
+.vchart__legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+.vchart__readout {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--hz-text);
+}
+
+/* ---------- sky dome ---------- */
+.skybox {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.skydome {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+}
+.skydome__sky {
+  fill: color-mix(in srgb, var(--color-info) 7%, var(--hz-bg));
+  stroke: none;
+}
+.skydome__horizon {
+  fill: none;
+  stroke: var(--hz-accent);
+  stroke-opacity: 0.7;
+  stroke-width: 1.5;
+}
+.skydome__ring {
+  fill: none;
+  stroke: color-mix(in srgb, var(--hz-text) 16%, transparent);
+  stroke-width: 1;
+}
+.skydome__cardinal {
+  fill: var(--hz-text);
+  font: 700 12px var(--hz-label);
+}
+.skydome__elev {
+  fill: var(--hz-dim);
+  font: 9px var(--hz-label);
+}
+.skydome__sunpath {
+  fill: none;
+  stroke: var(--color-warning);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.skydome__moon {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-dasharray: 4 4;
+  stroke-linecap: round;
+}
+.skydome__moon--phobos {
+  stroke: var(--hz-accent-2);
+}
+.skydome__moon--deimos {
+  stroke: var(--color-text-muted);
+}
+.skydome__sun circle {
+  fill: var(--color-warning);
+}
+.skydome__sun .skydome__glow {
+  fill: var(--color-warning);
+  opacity: 0.28;
+}
+.skydome__earth circle {
+  fill: var(--color-info);
+}
+.skydome__earth text {
+  fill: var(--color-info);
+  font: 600 11px var(--hz-label);
+}
+.skydome__earth--low {
+  opacity: 0.55;
+}
+
+/* ---------- narrow window ---------- */
+@media (max-width: 1100px) {
+  .vgrid,
+  .skybox {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sky-view,
+  .profile-view,
+  .mission-view {
+    padding-inline: 14px;
+  }
+}

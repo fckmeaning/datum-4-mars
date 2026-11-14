@@ -10,7 +10,37 @@ export {
 export {
   sampleCividisRgb,
   createCividisLutTexture,
-} from "./cividis";
+  sampleMagmaRgb,
+  createMagmaLutTexture,
+  getLayerLegend,
+} from "./colormap";
+export {
+  selectTerrainLOD,
+  selectOverviewIndex,
+  type LODConfig,
+} from "./lod";
+export {
+  sunAnglesToVector3,
+  computeHillshade,
+  computeApproximateMarsSun,
+  fetchSunPosition,
+} from "./sun";
+export {
+  getLimitingFactorColor,
+  buildRouteTubeSegments,
+  buildTraversePathPoints,
+  type RouteSegment3D,
+} from "./routeTube";
+export {
+  buildPlaceMarkers,
+  buildWaypointMarkers,
+  sampleTerrainNormal,
+  getWaypointRoleColor,
+  type Marker3DItem,
+  type PlaceInput,
+  type WaypointInput,
+} from "./markers";
+export { RoverModel, disposeGLTF, type RoverModelProps } from "./RoverModel";
 export {
   geoToAoi,
   aoiToGeo,
@@ -21,6 +51,7 @@ export {
 } from "./projection";
 export {
   loadElevationCOG,
+  loadBestElevationCOG,
   generateSyntheticGaleDEM,
   sampleTerrainElevation,
   createHeightDataTexture,

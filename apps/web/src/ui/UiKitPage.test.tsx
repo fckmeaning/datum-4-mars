@@ -5,7 +5,7 @@ import { UiKitPage } from "./UiKitPage";
 describe("UiKitPage", () => {
   it("renders without crashing and displays all design system sections", () => {
     render(<UiKitPage />);
-    expect(screen.getByRole("heading", { name: /AreoNav/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /DATUM-4/i })).toBeInTheDocument();
     expect(screen.getByText(/Design Tokens & Contrast/i)).toBeInTheDocument();
     expect(screen.getByText(/Start Menu Controls/i)).toBeInTheDocument();
     expect(screen.getByText(/Route Alternatives/i)).toBeInTheDocument();

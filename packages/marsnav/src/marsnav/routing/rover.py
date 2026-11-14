@@ -8,8 +8,8 @@ The way back uses the walking model and the F34 return field; the way out uses t
 * pressurised rover: the crew rides in the cabin, suit consumables are untouched until a breakdown; the walk back starts
   from full suits.
 
-All numbers below marked ASSUMPTION are module-level constants (config/params.yaml is not touched) and are returned in
-the plan's ``assumptions`` list. None of them is validated against flight hardware.
+The rover speed, slope limit, speed law and seated metabolic rate come from config/params.yaml (section ``rover``); the other
+numbers marked ASSUMPTION are module-level constants. All are returned in the plan's ``assumptions`` list. None of them is validated against flight hardware.
 """
 
 from __future__ import annotations
@@ -31,14 +31,14 @@ from marsnav.routing.mobility import o2_use
 from marsnav.routing.planner import _route_id, douglas_peucker
 from marsnav.routing.returnfield import return_field
 
-# ---- ASSUMPTION constants (rover model) ----------------------------------------------------------------------------
-ROVER_SPEED_M_S = 5000.0 / 3600.0   # ASSUMPTION: 5 km/h cruise on flat ground
-ROVER_THETA_MAX_DEG = 30.0          # ASSUMPTION: steepest slope the rover may drive (the suited crew walk limit is 25 deg)
+# ---- rover model constants: config/params.yaml (section "rover"), the other ASSUMPTIONS stay module-level ----------------
+ROVER_SPEED_M_S = float(param("rover.speed_m_s"))          # ASSUMPTION: 5 km/h cruise on flat ground
+ROVER_THETA_MAX_DEG = float(param("rover.theta_max_deg"))  # ASSUMPTION: steepest slope the rover may drive (the suited crew walk limit is 25 deg)
 ROVER_STEP_MAX_M = 0.4              # ASSUMPTION: obstacle/step the rover can clear (meaningful only at L3 resolution)
-ROVER_TOBLER_A = 1.5                # ASSUMPTION: speed falls as exp(-a*|grade|); rover loses ~1/3 of its speed at 15 deg
-ROVER_TOBLER_B = 0.0                # ASSUMPTION: speed peaks on flat ground (no downhill bonus for a braking rover)
-ROVER_K_ROUGHNESS = 1.5             # ASSUMPTION: speed divided by (1 + k*roughness_norm)
-SEATED_MET = 1.5                    # ASSUMPTION: suited crew sitting in an unpressurised rover, in multiples of 1 MET
+ROVER_TOBLER_A = float(param("rover.tobler_a"))            # ASSUMPTION: speed falls as exp(-a*|grade|); rover loses ~1/3 of its speed at 15 deg
+ROVER_TOBLER_B = float(param("rover.tobler_b"))            # ASSUMPTION: speed peaks on flat ground (no downhill bonus for a braking rover)
+ROVER_K_ROUGHNESS = float(param("rover.k_roughness"))      # ASSUMPTION: speed divided by (1 + k*roughness_norm)
+SEATED_MET = float(param("rover.seated_met"))              # ASSUMPTION: suited crew sitting in an unpressurised rover, in multiples of 1 MET
 ROVER_BATTERY_RESERVE = 0.2         # ASSUMPTION: fraction of the battery kept in reserve
 ROVER_PRESETS: dict[str, dict] = {
     # mass_kg: rover + crew + payload; crr: rolling resistance on loose regolith; drive_eff: battery-to-wheel efficiency;

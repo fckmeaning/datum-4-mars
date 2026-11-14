@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { toMarsAoi, fromMarsAoi, ensureMarsAoiProjection } from "./projection";
+import {
+  toMarsAoi,
+  fromMarsAoi,
+  ensureMarsAoiProjection,
+  geoToAoi,
+  aoiToGeo,
+} from "./projection";
 
 describe("MARS:AOI projection", () => {
   it("registers and initializes correctly", () => {
@@ -30,5 +36,22 @@ describe("MARS:AOI projection", () => {
       expect(Math.abs(lonBack - lon)).toBeLessThan(1e-6);
       expect(Math.abs(latBack - lat)).toBeLessThan(1e-6);
     }
+  });
+
+  it("supports shared geoToAoi and aoiToGeo across dual signatures", () => {
+    // Bradbury landing: lat = -4.5895, lon = 137.4417
+    const [x1, y1] = geoToAoi(-4.5895, 137.4417);
+    const [x2, y2] = geoToAoi([137.4417, -4.5895]);
+
+    expect(x1).toBeCloseTo(x2, 5);
+    expect(y1).toBeCloseTo(y2, 5);
+
+    const [lon1, lat1] = aoiToGeo(x1, y1);
+    const [lon2, lat2] = aoiToGeo([x1, y1]);
+
+    expect(lon1).toBeCloseTo(137.4417, 5);
+    expect(lat1).toBeCloseTo(-4.5895, 5);
+    expect(lon2).toBeCloseTo(lon1, 5);
+    expect(lat2).toBeCloseTo(lat1, 5);
   });
 });

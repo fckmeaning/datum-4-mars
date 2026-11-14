@@ -1,0 +1,502 @@
+/**
+ * DATUM-4 skin: the survey-instrument look applied on top of the tokens (styles/tokens.css).
+ * Layered glass cards with a fading accent hairline on top, soft two-layer shadows, pill tabs, calm hover and entrance motion.
+ * One accent drives it (html[data-accent]); route and range ring stay blue on purpose, warnings stay amber.
+ * Rules: no filters or scale on text, motion is opacity and translate only, everything respects reduced motion (tokens.css).
+ */
+
+html,
+body,
+#root {
+  background-color: var(--hz-bg);
+}
+
+/* ---------- cards: glass, light edge, accent hairline, two-layer shadow ---------- */
+html .site-detail,
+html .site-detail__panel {
+  color: var(--hz-text);
+}
+html .site-detail {
+  background: radial-gradient(120% 90% at 70% 0%, #0b1522 0%, var(--hz-bg) 60%);
+}
+html .eva-card,
+html .pin-card,
+html .route-banner,
+html .stop-info,
+html .eva-wrist,
+html .site-relief__tile,
+html .site-relief__hud,
+html .layer-dock,
+html .globe-legend,
+html .globe-readout__card,
+html .site-note {
+  background: var(--glass-hairline) top / 100% 1px no-repeat, var(--glass-fill);
+  border: 1px solid var(--hz-line);
+  border-radius: var(--hz-radius);
+  box-shadow: var(--glass-edge), var(--shadow-lg);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+}
+html .site-detail__panel {
+  background: var(--glass-hairline) top / 100% 1px no-repeat, linear-gradient(180deg, rgba(14, 22, 34, 0.98), rgba(7, 12, 19, 0.98));
+  border-width: 0 1px 0 0;
+  border-color: var(--hz-line);
+  box-shadow: 18px 0 40px -24px rgba(0, 0, 0, 0.7);
+}
+
+/* entrance: cards rise, side panels slide; one short curve, no bounce */
+html .eva-card,
+html .pin-card,
+html .stop-info,
+html .layer-dock,
+html .globe-legend {
+  animation: d4-rise 360ms var(--ease-out) backwards;
+}
+html .site-detail__panel,
+html .globe-screen__survey-card {
+  animation: d4-slide-left 420ms var(--ease-out) backwards;
+}
+html .site-detail__tabs {
+  animation: d4-fade 300ms var(--ease-out) backwards;
+}
+
+/* ---------- typography ---------- */
+html .site-detail h1,
+html .site-hud b,
+html .eva-card h2,
+html .eva-card h3,
+html .pin-card h3,
+html .pin-card__coords,
+html .layer-dock__header,
+html .layer-dock h2 {
+  font-family: var(--hz-display);
+  letter-spacing: 0;
+}
+html .site-detail h1 {
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 8px 0 4px;
+}
+html .site-detail__kicker,
+html .site-hud i,
+html .site-detail__controls legend {
+  font-family: var(--hz-label);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hz-accent);
+}
+html .site-detail__summary {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #c3cfdb;
+}
+html .site-detail__coords,
+html .site-detail__facts {
+  color: var(--hz-dim);
+}
+html .site-detail__facts dt {
+  color: var(--hz-dim);
+}
+html .site-detail__facts dd {
+  color: var(--hz-text);
+  font-variant-numeric: tabular-nums;
+}
+html .site-detail__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  margin-left: -8px;
+  border-radius: 999px;
+  color: var(--hz-dim);
+  font: 600 12px var(--hz-label);
+  letter-spacing: 0.02em;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+html .site-detail__back:hover {
+  color: var(--hz-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+html .site-detail__controls {
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: var(--hz-radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+html .site-detail__tag,
+html .site-detail__modeled {
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- tabs and buttons ---------- */
+html .site-detail__stage {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+html .site-detail__tabs {
+  container-type: inline-size;
+  container-name: bar;
+  min-width: 0;
+  gap: 6px;
+  padding: 0 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  background: linear-gradient(180deg, rgba(18, 29, 44, 0.96), rgba(9, 15, 24, 0.96));
+  border-bottom: 1px solid var(--hz-line);
+  box-shadow: 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 12;
+}
+html .site-detail__tabs::-webkit-scrollbar {
+  display: none;
+}
+html .site-detail__tabs button[role="tab"] {
+  flex: none;
+  font-family: var(--hz-label);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--hz-dim);
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+html .site-detail__tabs button[role="tab"]:hover {
+  color: var(--hz-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+html .site-detail__tabs button.is-active {
+  color: var(--hz-text);
+  border-color: color-mix(in srgb, var(--hz-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--hz-accent) 18%, transparent);
+  box-shadow: 0 0 18px -4px color-mix(in srgb, var(--hz-accent) 55%, transparent);
+}
+html .site-detail__actions button,
+html .pin-card__actions button,
+html .eva-card__row button,
+html .site-relief__modes button,
+html .site-relief__back {
+  border-radius: var(--hz-radius-sm);
+  font-family: var(--hz-label);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast),
+    transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+html .site-detail__actions button:hover,
+html .pin-card__actions button:hover,
+html .eva-card__row button:hover,
+html .site-relief__modes button:hover,
+html .site-relief__back:hover {
+  background: color-mix(in srgb, var(--hz-accent) 14%, transparent);
+  border-color: var(--hz-accent);
+  color: var(--hz-text);
+}
+html .site-detail__actions button:active,
+html .pin-card__actions button:active,
+html .eva-card__row button:active {
+  transform: translateY(1px);
+}
+html .site-detail__actions .site-detail__primary,
+html .pin-card__primary {
+  background: var(--hz-accent) !important;
+  color: var(--color-on-accent) !important;
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--hz-accent) 70%, transparent);
+}
+html .site-detail__actions .site-detail__primary:hover,
+html .pin-card__primary:hover {
+  background: var(--hz-accent-2) !important;
+}
+
+/* ---------- mission clock ---------- */
+html .site-hud {
+  flex-wrap: nowrap;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+html .site-hud b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hz-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+html .site-hud i {
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--hz-dim);
+}
+html .site-hud__link {
+  color: var(--hz-accent-2) !important;
+}
+/* the bar sheds the least important clock fields as it narrows (container query on the bar, not on the window) */
+@container bar (max-width: 1160px) {
+  .site-hud > div:nth-child(4) {
+    display: none;
+  }
+}
+@container bar (max-width: 1060px) {
+  .site-hud > div:nth-child(3) {
+    display: none;
+  }
+}
+@container bar (max-width: 1000px) {
+  .site-hud > div:nth-child(2) {
+    display: none;
+  }
+  .accent-switch__label {
+    display: none;
+  }
+}
+@container bar (max-width: 1000px) {
+  html .site-detail__tabs {
+    gap: 2px;
+    padding: 0 10px;
+  }
+  html .site-detail__tabs button[role="tab"] {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+  html .site-hud {
+    gap: 8px;
+  }
+  .site-hud .tour-btn {
+    padding: 5px 9px;
+  }
+}
+@container bar (max-width: 920px) {
+  .site-hud > div:nth-child(1) {
+    display: none;
+  }
+}
+
+/* ---------- pin card: the range ring line is blue like the ring ---------- */
+.pin-card__range {
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  border-left: 3px solid #3aa0ff;
+  border-radius: 0 var(--hz-radius-sm) var(--hz-radius-sm) 0;
+  background: rgba(58, 160, 255, 0.09);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--hz-text);
+}
+.pin-card__range i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border: 2px dashed #3aa0ff;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+.pin-card__range b {
+  color: #7cc2ff;
+}
+
+/* ---------- accent switch ---------- */
+html .accent-switch,
+html .site-hud .accent-switch {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+}
+.accent-switch__label {
+  font: 600 10px var(--hz-label);
+  letter-spacing: 0.14em;
+  color: var(--hz-dim);
+}
+html .accent-switch button {
+  flex: none;
+  width: 16px;
+  min-width: 0;
+  height: 16px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+html .accent-switch button:hover {
+  transform: translateY(-1px);
+}
+html .accent-switch button[aria-pressed="true"] {
+  outline: 2px solid var(--hz-text);
+  outline-offset: 2px;
+}
+
+/* ---------- headings on every page ---------- */
+html h1,
+html h2 {
+  font-family: var(--hz-display);
+  letter-spacing: -0.005em;
+}
+html .bottom-bar {
+  border-top: 1px solid var(--hz-line);
+  background: var(--glass-hairline) top / 100% 1px no-repeat, linear-gradient(180deg, rgba(18, 29, 44, 0.96), rgba(8, 13, 21, 0.98));
+  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------- globe screen: glass, spacing, hover ---------- */
+html .globe-screen__brand,
+html .globe-screen__survey-card,
+html .globe-screen__nav-btn {
+  background: var(--glass-hairline) top / 100% 1px no-repeat, var(--glass-fill);
+  border: 1px solid var(--hz-line);
+  border-radius: var(--hz-radius);
+  box-shadow: var(--glass-edge), var(--shadow-lg);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+}
+html .globe-screen__nav-btn {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-size: 12.5px;
+  transition: color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+html .globe-screen__nav-btn:hover {
+  filter: none;
+  color: var(--hz-text);
+  border-color: var(--hz-accent);
+  box-shadow: var(--glass-edge), var(--shadow-lg), 0 0 22px -6px color-mix(in srgb, var(--hz-accent) 60%, transparent);
+}
+html .globe-screen__survey-card {
+  border-radius: var(--hz-radius);
+}
+html .globe-screen__survey-title {
+  letter-spacing: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+html .globe-screen__survey-label,
+html .globe-screen__sites-subtitle {
+  font-family: var(--hz-label);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+html .globe-screen__survey-coords,
+html .globe-screen__site-mission {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--hz-dim);
+}
+html .globe-screen__descend-btn {
+  color: var(--color-on-accent);
+  border-radius: var(--hz-radius-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--hz-accent) 75%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+html .globe-screen__descend-btn:hover {
+  box-shadow: 0 10px 28px -8px color-mix(in srgb, var(--hz-accent) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+html .globe-screen__site-item {
+  border-radius: var(--hz-radius-sm);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+html .globe-screen__site-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+html .globe-screen__site-name {
+  letter-spacing: 0.01em;
+}
+html .globe-screen__brand {
+  padding: 8px 16px 8px 14px;
+}
+
+/* layer dock: the active row uses the accent, not a fixed orange */
+html .layer-dock__item {
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+html .layer-dock__item--active {
+  border-color: color-mix(in srgb, var(--hz-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--hz-accent) 10%, transparent);
+}
+html .layer-dock__title {
+  font-family: var(--hz-label);
+  letter-spacing: 0.1em;
+  font-size: 11.5px;
+}
+html .layer-dock__shortcut {
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- guided tour: buttons and caption ---------- */
+.tour-btn {
+  align-self: center;
+  padding: 5px 13px;
+  border: 1px solid color-mix(in srgb, var(--hz-accent) 70%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hz-accent) 6%, transparent);
+  color: var(--hz-accent);
+  font: 600 11.5px var(--hz-label);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.tour-btn:hover,
+.tour-btn.is-on {
+  background: var(--hz-accent);
+  color: var(--color-on-accent);
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--hz-accent) 80%, transparent);
+}
+.autopilot-banner__caption strong {
+  display: block;
+  font-family: var(--hz-display);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--hz-accent);
+}
+.autopilot-banner__caption span {
+  color: var(--hz-text);
+}
+
+/* stress-test slider on the sortie card */
+.eva-card__whatif {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  font: 600 11px var(--hz-label);
+  color: var(--hz-dim);
+}
+.eva-card__whatif input {
+  width: 100%;
+  accent-color: var(--hz-accent);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.tour-btn.is-rec,
+.bottom-bar__btn.is-rec {
+  animation: rec-blink 1.2s steps(2, jump-none) infinite;
+}
+@keyframes rec-blink {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-btn.is-rec,
+  .bottom-bar__btn.is-rec {
+    animation: none;
+  }
+}

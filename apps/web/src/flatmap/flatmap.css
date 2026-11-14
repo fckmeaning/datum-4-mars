@@ -1,0 +1,293 @@
+/* Flat map of Mars: every colour comes from the --hz-* tokens (styles/horizon.css), so the accent switch reaches it. */
+
+.flatmap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--hz-bg, #070b10);
+  outline: none;
+}
+.flatmap--grabbing {
+  cursor: grabbing;
+}
+
+.flatmap__rasterhost,
+.flatmap__raster,
+.flatmap__overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.flatmap__overlay {
+  pointer-events: none;
+}
+
+/* ---- landing site pins (moved by transform from the frame loop) */
+.flatmap__pins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.flatmap__pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  color: var(--hz-text, #e6edf3);
+  font-family: var(--hz-label, "Inter"), system-ui, sans-serif;
+  pointer-events: none;
+  will-change: transform;
+  z-index: 1;
+}
+.flatmap__pin--selected {
+  z-index: 5;
+}
+.flatmap__pin:hover,
+.flatmap__pin:focus-visible {
+  z-index: 8;
+}
+.flatmap__dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--hz-accent, #2dd4bf);
+  border: 2px solid #04141b;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--hz-accent, #2dd4bf) 70%, white), 0 2px 10px rgba(0, 0, 0, 0.65);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.flatmap__pin:hover .flatmap__dot,
+.flatmap__pin:focus-visible .flatmap__dot {
+  transform: scale(1.35);
+}
+.flatmap__pin:focus-visible {
+  outline: none;
+}
+.flatmap__pin:focus-visible .flatmap__dot {
+  box-shadow: 0 0 0 3px #fff, 0 2px 10px rgba(0, 0, 0, 0.65);
+}
+.flatmap__pin--selected .flatmap__dot {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--hz-accent, #2dd4bf), 0 0 14px var(--hz-accent, #2dd4bf);
+}
+.flatmap__pin--selected .flatmap__dot::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  border: 2px solid var(--hz-accent, #2dd4bf);
+  animation: flatmap-pulse 2s ease-out infinite;
+}
+@keyframes flatmap-pulse {
+  from {
+    transform: scale(0.55);
+    opacity: 0.95;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+.flatmap__label {
+  position: absolute;
+  left: 0;
+  top: -6px;
+  transform: translate(-50%, -125%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--hz-line, rgba(45, 212, 191, 0.38));
+  background: rgba(6, 10, 16, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.flatmap__label-year {
+  font: 600 10.5px var(--font-mono, ui-monospace, monospace);
+  color: var(--hz-warn, #ffb000);
+}
+.flatmap__pin[data-label="off"] .flatmap__label {
+  opacity: 0;
+}
+.flatmap__pin:hover .flatmap__label,
+.flatmap__pin:focus-visible .flatmap__label,
+.flatmap__pin--selected .flatmap__label {
+  opacity: 1;
+}
+.flatmap__pin--selected .flatmap__label {
+  border-color: var(--hz-accent, #2dd4bf);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--hz-accent, #2dd4bf) 40%, transparent);
+}
+
+.flatmap__card {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  transform: translate(-50%, 4px);
+  min-width: 200px;
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hz-line, rgba(45, 212, 191, 0.38));
+  background: linear-gradient(180deg, var(--hz-panel-2, rgba(16, 26, 40, 0.96)), var(--hz-panel, rgba(11, 18, 28, 0.94)));
+  box-shadow: inset 0 2px 0 var(--hz-accent, #2dd4bf), 0 14px 34px rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  text-align: left;
+  pointer-events: none;
+}
+.flatmap__card strong {
+  font-family: var(--hz-display, "Space Grotesk"), system-ui, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+}
+.flatmap__card span {
+  color: var(--hz-dim, #8ea3b8);
+}
+.flatmap__card-coords {
+  font: 11px var(--font-mono, ui-monospace, monospace);
+}
+.flatmap__card-cta {
+  margin-top: 4px;
+  color: var(--hz-accent-2, #7ff0e0) !important;
+  font-weight: 700;
+}
+.flatmap__pin:hover .flatmap__card,
+.flatmap__pin:focus-visible .flatmap__card {
+  display: flex;
+}
+.flatmap__pin[data-edge="left"] .flatmap__card {
+  transform: translate(-16px, 4px);
+}
+.flatmap__pin[data-edge="right"] .flatmap__card {
+  transform: translate(calc(-100% + 16px), 4px);
+}
+.flatmap__pin[data-flip="1"] .flatmap__card {
+  top: auto;
+  bottom: 38px;
+}
+
+/* ---- zoom buttons */
+.flatmap__zoom {
+  position: absolute;
+  right: 112px;
+  bottom: 60px;
+  z-index: 20;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--hz-line, rgba(45, 212, 191, 0.38));
+  background: var(--hz-panel-2, rgba(16, 26, 40, 0.92));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.flatmap__zoom button {
+  width: 38px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--hz-text, #e6edf3);
+  font: 600 18px var(--hz-label, "Inter"), system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.flatmap__zoom button + button {
+  border-left: 1px solid var(--hz-line, rgba(45, 212, 191, 0.38));
+}
+.flatmap__zoom button:hover {
+  background: color-mix(in srgb, var(--hz-accent, #2dd4bf) 18%, transparent);
+  color: var(--hz-accent-2, #7ff0e0);
+}
+.flatmap__zoom button:focus-visible {
+  outline: 2px solid var(--hz-accent, #2dd4bf);
+  outline-offset: -2px;
+}
+
+.flatmap__loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--hz-line, rgba(45, 212, 191, 0.38));
+  background: rgba(6, 10, 16, 0.85);
+  color: var(--hz-dim, #8ea3b8);
+  font: 12px var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+/* the cursor readout of /globe sits under the canvas container (z 10); lift it so it is readable over the opaque flat map */
+.globe-screen[data-view] .globe-screen__cursor {
+  z-index: 15;
+}
+
+/* ---- the two pictures of the planet in one stack, crossfading (about 500 ms) */
+.view-stack {
+  position: absolute;
+  inset: 0;
+  --view-ms: 500ms;
+}
+.view-layer {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity var(--view-ms) ease,
+    transform var(--view-ms) cubic-bezier(0.22, 0.7, 0.2, 1),
+    visibility 0s linear var(--view-ms);
+}
+.view-layer[data-active="1"] {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s, 0s, 0s;
+}
+.view-layer--globe[data-active="0"] {
+  opacity: 0;
+  transform: scale(1.12);
+  visibility: hidden;
+  pointer-events: none;
+}
+.view-layer--flat[data-active="0"] {
+  opacity: 0;
+  transform: scale(0.94);
+  visibility: hidden;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-layer {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+  .flatmap__pin--selected .flatmap__dot::after {
+    animation: none;
+  }
+}

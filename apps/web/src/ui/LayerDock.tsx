@@ -5,7 +5,7 @@ import "./LayerDock.css";
 
 export interface DockLayerItem {
   id: string;
-  shortcutNumber: number; // 1 to 6
+  shortcutNumber: number; // 1 to 10 (10 has no key)
   name: string;
   family: string;
   source: string;
@@ -13,6 +13,8 @@ export interface DockLayerItem {
   opacity: number;
   simulated?: boolean;
   approximate?: boolean;
+  /** Derived from other data by a stated model, not measured. */
+  modeled?: boolean;
 }
 
 export interface LayerDockProps {
@@ -30,7 +32,7 @@ export function LayerDock({
 }: LayerDockProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Keyboard shortcut listener: digits 1–6 toggle corresponding layer
+  // Keyboard shortcut listener: digits 1–9 toggle corresponding layer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if focus is in an input or textarea
@@ -44,7 +46,7 @@ export function LayerDock({
       }
 
       const num = parseInt(e.key, 10);
-      if (num >= 1 && num <= 6) {
+      if (num >= 1 && num <= 9) {
         const matchingLayer = layers.find((l) => l.shortcutNumber === num);
         if (matchingLayer) {
           e.preventDefault();
@@ -65,7 +67,7 @@ export function LayerDock({
     >
       <div className="layer-dock__header">
         <span className="layer-dock__title">Orbital Data Layers</span>
-        <span className="layer-dock__subtitle">Keys 1–6</span>
+        <span className="layer-dock__subtitle">Keys 1–9</span>
       </div>
 
       <ul className="layer-dock__list">
@@ -108,6 +110,11 @@ export function LayerDock({
                     </label>
                     {layer.simulated && (
                       <Badge variant="SIMULATED" size="sm" />
+                    )}
+                    {layer.modeled && (
+                      <Badge variant="APPROXIMATE" size="sm">
+                        MODELED
+                      </Badge>
                     )}
                     {layer.approximate && (
                       <Badge variant="APPROXIMATE" size="sm" />

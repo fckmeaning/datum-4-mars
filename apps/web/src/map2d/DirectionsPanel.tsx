@@ -1,11 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect, type ReactElement } from "react";
 import { useAppStore, type Waypoint } from "../state/store";
-import { apiClient, type AlternativesResult, type Place } from "../api/client";
-import { formatMarsDistance } from "./distance";
+import { apiClient, type AlternativesResult, type Place, ApiError } from "../api/client";
+import { RouteCard } from "../ui/RouteCard";
+import { Button, Chip, Panel, PanelSection, Skeleton } from "../ui/Panel";
+import { DirectionsIcon, InfoIcon, PlusIcon, RouteIcon, WarningIcon, ChevronDownIcon } from "../icons";
+import { VERDICT_LABEL } from "../ui/format";
+import { summariseLimitingFactors } from "./routeSummary";
+import "./DirectionsPanel.css";
 
 interface DirectionsPanelProps {
   places: Place[];
   onClose: () => void;
+}
+
+/** Seconds since `active` became true (0 when inactive); drives the "first run is slow" hint. */
+function useElapsedSeconds(active: boolean): number {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      setSeconds(0);
+      return;
+    }
+    const started = Date.now();
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+  return seconds;
+}
+
+function stopLabel(index: number, count: number): string {
+  if (index === 0) return "From";
+  if (index === count - 1) return "To";
+  return `Via ${index}`;
+}
+
+function stopMarker(index: number, count: number): string {
+  if (index === 0) return "A";
+  if (index === count - 1) return "B";
+  return String(index);
 }
 
 export function DirectionsPanel({ places, onClose }: DirectionsPanelProps) {
@@ -18,17 +50,32 @@ export function DirectionsPanel({ places, onClose }: DirectionsPanelProps) {
   const setSelectedRouteId = useAppStore((s) => s.setSelectedRouteId);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const elapsed = useElapsedSeconds(loading);
+
+  // Ensure From defaults to base place and To defaults to destination place
+  useEffect(() => {
+    if (places.length === 0) return;
+    const basePlace = places.find((p) => p.kind === "base") || places[0];
+    const destinationPlace = places.find((p) => p.id === "yellowknife") || places[1] || basePlace;
+
+    if (waypoints.length < 2 && basePlace && destinationPlace) {
+      setWaypoints([
+        { role: "start", dwell_min: 0, place_id: basePlace.id, lat: basePlace.lat, lon: basePlace.lon },
+        { role: "goal", dwell_min: 0, place_id: destinationPlace.id, lat: destinationPlace.lat, lon: destinationPlace.lon },
+      ]);
+    }
+  }, [places]);
 
   // Compute alternative routes
   const handleCalculateRoutes = async () => {
     if (waypoints.length < 2) {
-      setError("Please define at least a start point and destination.");
+      setErrorMessage("Please define at least a start point and destination.");
       return;
     }
 
     setLoading(true);
-    setError(null);
+    setErrorMessage(null);
     try {
       const res: AlternativesResult = await apiClient.routeAlternatives({
         site_id: siteId,
@@ -44,7 +91,11 @@ export function DirectionsPanel({ places, onClose }: DirectionsPanelProps) {
         setSelectedRouteId(res.routes[0].route_id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to calculate routes");
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage(err instanceof Error ? err.message : "Failed to calculate routes");
+      }
     } finally {
       setLoading(false);
     }
@@ -57,12 +108,7 @@ export function DirectionsPanel({ places, onClose }: DirectionsPanelProps) {
     const updated = [...waypoints];
     const existing = updated[index];
     if (existing) {
-      updated[index] = {
-        ...existing,
-        place_id: selectedPlace.id,
-        lat: selectedPlace.lat,
-        lon: selectedPlace.lon,
-      };
+      updated[index] = { ...existing, place_id: selectedPlace.id, lat: selectedPlace.lat, lon: selectedPlace.lon };
       setWaypoints(updated);
     }
   };
@@ -72,237 +118,159 @@ export function DirectionsPanel({ places, onClose }: DirectionsPanelProps) {
     if (defaultStop) {
       const updated: Waypoint[] = [
         ...waypoints.slice(0, -1),
-        {
-          role: "via",
-          dwell_min: 10,
-          place_id: defaultStop.id,
-          lat: defaultStop.lat,
-          lon: defaultStop.lon,
-        },
-        waypoints[waypoints.length - 1] ?? {
-          role: "goal",
-          dwell_min: 0,
-          lat: -4.755,
-          lon: 137.382,
-        },
+        { role: "via", dwell_min: 10, place_id: defaultStop.id, lat: defaultStop.lat, lon: defaultStop.lon },
+        waypoints[waypoints.length - 1] ?? { role: "goal", dwell_min: 0, lat: -4.755, lon: 137.382 },
       ];
       setWaypoints(updated);
     }
   };
 
-  const formatDuration = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.round((seconds % 3600) / 60);
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins} min`;
-  };
+  // Find violations in selected route
+  const activeRoute = routes.find((r) => r.route_id === selectedRouteId) ?? routes[0];
+  const violations = activeRoute?.feasibility?.violations ?? [];
+  const factors = activeRoute ? summariseLimitingFactors(activeRoute.segments ?? []) : [];
 
-  const getProfileColor = (profile: string) => {
-    switch (profile) {
-      case "FASTEST":
-        return "#56B4E9";
-      case "SAFEST":
-        return "#009E73";
-      case "BALANCED":
-        return "#E69F00";
-      case "SCIENCE":
-        return "#CC79A7";
-      default:
-        return "#56B4E9";
-    }
-  };
+  let results: ReactElement | null = null;
+  if (loading && routes.length === 0) {
+    results = (
+      <div className="dir__skeletons" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="dir__skeleton-card">
+            <Skeleton width="38%" height={16} />
+            <Skeleton width="100%" height={12} />
+            <Skeleton width="72%" height={12} />
+          </div>
+        ))}
+      </div>
+    );
+  } else if (routes.length > 0) {
+    results = (
+      <PanelSection title="Alternatives" aside={routes.length}>
+        <div className="dir__routes">
+          {routes.map((route) => (
+            <RouteCard key={route.route_id} route={route} selected={selectedRouteId === route.route_id} onSelect={(id) => setSelectedRouteId(id)} />
+          ))}
+        </div>
+
+        {activeRoute ? (
+          <details className="dir__why">
+            <summary>
+              <span>Why this route</span>
+              <ChevronDownIcon size={16} />
+            </summary>
+            <div className="dir__why-body">
+              {activeRoute.verdict ? (
+                <p className="dir__why-verdict">
+                  <strong>{VERDICT_LABEL[activeRoute.verdict.call]}.</strong>{" "}
+                  {activeRoute.verdict.reasons.length > 0 ? activeRoute.verdict.reasons.join(" ") : "Every margin is inside its limit."}
+                </p>
+              ) : null}
+              {factors.length > 0 ? (
+                <ul className="dir__factors" aria-label="What limits this route, by share of walking time">
+                  {factors.map((f) => (
+                    <li key={f.factor}>
+                      <span className="dir__factor-label">{f.label}</span>
+                      <span className="dir__factor-bar" aria-hidden="true">
+                        <span style={{ width: `${Math.round(f.share * 100)}%` }} />
+                      </span>
+                      <span className="dir__factor-value u-num">{Math.round(f.share * 100)}%</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dir__muted">No per-segment breakdown for this route.</p>
+              )}
+              <div className="dir__chips">
+                {activeRoute.data_levels.map((lv) => (
+                  <Chip key={lv} tone="slate" title="Terrain data level used">
+                    {lv}
+                  </Chip>
+                ))}
+                {activeRoute.simulated_inputs.length > 0 ? (
+                  <Chip tone="warning" title={`Simulated inputs: ${activeRoute.simulated_inputs.join(", ")}`}>
+                    SIMULATED INPUTS
+                  </Chip>
+                ) : null}
+              </div>
+            </div>
+          </details>
+        ) : null}
+      </PanelSection>
+    );
+  } else if (!loading) {
+    results = (
+      <p className="dir__hint">
+        <InfoIcon size={16} />
+        <span>Pick a start and a destination, then calculate four alternatives: fastest, safest, balanced and science.</span>
+      </p>
+    );
+  }
 
   return (
-    <div
-      style={{
-        background: "var(--color-surface, rgba(16, 24, 38, 0.92))",
-        backdropFilter: "blur(16px)",
-        border: "1px solid rgba(255, 255, 255, 0.12)",
-        borderRadius: "var(--radius-lg, 14px)",
-        padding: "20px",
-        color: "#E6EDF3",
-        boxShadow: "0 12px 36px rgba(0,0,0,0.6)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
-        maxHeight: "85vh",
-        overflowY: "auto",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>🧭</span> Directions & Profiles
-        </h2>
-        <button
-          onClick={onClose}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#8B949E",
-            cursor: "pointer",
-            fontSize: "16px",
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Waypoint inputs */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+    <Panel label="Directions and alternatives panel" className="dir" icon={<DirectionsIcon size={20} />} title="Directions" subtitle="Fastest, safest, balanced and science routes" onClose={onClose}>
+      <ol className="dir__stops">
         {waypoints.map((wp, idx) => {
-          const isFirst = idx === 0;
-          const isLast = idx === waypoints.length - 1;
-          const label = isFirst ? "From (Base)" : isLast ? "To (Destination)" : `Stop ${idx}`;
-
+          const label = stopLabel(idx, waypoints.length);
           return (
-            <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <span style={{ fontSize: "11px", textTransform: "uppercase", color: "#8B949E", fontWeight: 600 }}>
-                {label}
+            <li key={idx} className="dir__stop">
+              <span className="dir__marker u-num" aria-hidden="true">
+                {stopMarker(idx, waypoints.length)}
               </span>
-              <select
-                value={wp.place_id ?? ""}
-                onChange={(e) => handleUpdateWaypoint(idx, e.target.value)}
-                style={{
-                  background: "#21262D",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  color: "#FFFFFF",
-                  fontSize: "13px",
-                  outline: "none",
-                  cursor: "pointer",
-                }}
-              >
-                {places.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.kind})
-                  </option>
-                ))}
-              </select>
-            </div>
+              <label className="dir__field">
+                <span className="dir__field-label u-caps">{label}</span>
+                <span className="dir__select-wrap">
+                  <select className="dir__select" value={wp.place_id ?? ""} onChange={(e) => handleUpdateWaypoint(idx, e.target.value)} aria-label={`${label} place`}>
+                    {wp.place_id ? null : <option value="">Custom point</option>}
+                    {places.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.kind})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon size={16} className="dir__select-caret" />
+                </span>
+              </label>
+            </li>
           );
         })}
+      </ol>
 
-        <button
-          onClick={handleAddStop}
-          style={{
-            background: "transparent",
-            border: "1px dashed rgba(255,255,255,0.2)",
-            borderRadius: "8px",
-            color: "#56B4E9",
-            padding: "8px",
-            fontSize: "13px",
-            cursor: "pointer",
-            marginTop: "4px",
-          }}
-        >
-          + Add stop
-        </button>
-      </div>
+      <Button variant="ghost" icon={<PlusIcon size={16} />} onClick={handleAddStop} className="dir__add">
+        Add stop
+      </Button>
 
-      <button
-        onClick={handleCalculateRoutes}
-        disabled={loading}
-        style={{
-          background: "var(--color-accent, #56B4E9)",
-          color: "#080C10",
-          border: "none",
-          borderRadius: "8px",
-          padding: "10px",
-          fontWeight: 700,
-          fontSize: "14px",
-          cursor: loading ? "wait" : "pointer",
-          boxShadow: "0 4px 12px rgba(86,180,233,0.3)",
-        }}
-      >
-        {loading ? "Calculating (F05–F09)..." : "Calculate Alternatives"}
-      </button>
+      <Button variant="primary" block loading={loading} icon={<RouteIcon size={16} />} onClick={handleCalculateRoutes}>
+        {loading ? "Calculating…" : "Calculate Alternatives"}
+      </Button>
 
-      {error && (
-        <div style={{ color: "#F85149", fontSize: "12px", padding: "8px", background: "rgba(248,81,73,0.1)", borderRadius: "6px" }}>
-          {error}
+      {loading && elapsed >= 6 ? (
+        <p className="dir__hint" role="status">
+          <InfoIcon size={16} />
+          <span>The first calculation compiles the math kernels and can take up to 30 s ({elapsed} s so far). Later ones take a few seconds.</span>
+        </p>
+      ) : null}
+
+      {errorMessage ? (
+        <div className="dir__alert dir__alert--danger" role="alert">
+          <WarningIcon size={16} />
+          <div>
+            <p className="dir__alert-title">Routing request failed</p>
+            <p className="dir__alert-text">{errorMessage}</p>
+          </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Alternative Route Cards */}
-      {routes.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "8px" }}>
-          <span style={{ fontSize: "12px", fontWeight: 600, color: "#8B949E", textTransform: "uppercase" }}>
-            Route Alternatives ({routes.length})
-          </span>
-
-          {routes.map((route) => {
-            const isSelected = !selectedRouteId || route.route_id === selectedRouteId;
-            const color = getProfileColor(route.profile);
-
-            return (
-              <div
-                key={route.route_id}
-                onClick={() => setSelectedRouteId(route.route_id)}
-                style={{
-                  background: isSelected ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
-                  border: isSelected ? `2px solid ${color}` : "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: "10px",
-                  padding: "12px 14px",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  opacity: isSelected ? 1.0 : 0.65,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: "10px",
-                        height: "10px",
-                        borderRadius: "50%",
-                        backgroundColor: color,
-                      }}
-                    />
-                    <strong style={{ fontSize: "15px", color: "#FFFFFF" }}>{route.profile}</strong>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                      background: route.totals.risk && route.totals.risk < 0.3 ? "#238636" : "#8957E5",
-                      color: "#FFFFFF",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {route.totals.risk && route.totals.risk < 0.3 ? "LOW RISK" : "MED RISK"}
-                  </span>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "8px",
-                    fontSize: "12px",
-                    color: "#C9D1D9",
-                  }}
-                >
-                  <div>
-                    ⏱️ <span style={{ fontWeight: 600, color: "#FFFFFF" }}>{formatDuration(route.totals.time_s)}</span>
-                  </div>
-                  <div>
-                    📏 <span>{formatMarsDistance(route.totals.length_m)}</span>
-                  </div>
-                  <div>
-                    ☢️ <span>{(route.totals.dose_mSv * 1000).toFixed(1)} µSv</span>
-                  </div>
-                  <div>
-                    ⛰️ <span>Max {route.totals.max_slope_deg.toFixed(1)}°</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      {violations.length > 0 ? (
+        <div className="dir__alert dir__alert--warning" role="status">
+          <WarningIcon size={16} />
+          <div>
+            <p className="dir__alert-title">Route feasibility warning</p>
+            <p className="dir__alert-text">{violations.map((v) => `${v.kind}: ${v.message}`).join("; ")}</p>
+          </div>
         </div>
-      )}
-    </div>
+      ) : null}
+
+      {results}
+    </Panel>
   );
 }

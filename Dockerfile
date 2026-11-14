@@ -33,11 +33,14 @@ COPY data/manifest.yaml data/manifest.yaml
 COPY data/processed data/processed
 COPY --from=web /src/apps/web/dist /app/web
 
-RUN useradd --create-home --uid 10001 app && mkdir -p /app/.numba_cache && chown -R app /app
+# uid 1000: Hugging Face Spaces runs containers as user 1000 (it must be able to write the numba cache); fine elsewhere too
+RUN useradd --create-home --uid 1000 app && mkdir -p /app/.numba_cache && chown -R app /app
 USER app
 # compile the numba kernels into the image cache; never fails the build
 RUN python deploy/warm.py || true
 
-EXPOSE 8080
-# PORT is set by Cloud Run / Render / Fly; Hugging Face Spaces sets it via app_port (7860). Warm-up first so request 1 is fast.
-CMD ["sh", "-c", "python deploy/warm.py || true; exec python -m uvicorn app.main:app --app-dir apps/api --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips='*'"]
+# 7860 is the Hugging Face Spaces default (README app_port); Cloud Run / Render / Fly inject their own PORT
+ENV PORT=7860
+EXPOSE 7860
+# Warm-up first so request 1 is fast.
+CMD ["sh", "-c", "python deploy/warm.py || true; exec python -m uvicorn app.main:app --app-dir apps/api --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*'"]

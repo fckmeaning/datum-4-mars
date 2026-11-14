@@ -59,8 +59,8 @@
 }
 
 .layer-dock__item--active {
-  border-color: rgba(224, 106, 59, 0.35);
-  background: rgba(224, 106, 59, 0.08);
+  border-color: color-mix(in srgb, var(--hz-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--hz-accent) 8%, transparent);
 }
 
 .layer-dock__item-main {

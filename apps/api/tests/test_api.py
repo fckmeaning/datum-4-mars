@@ -164,8 +164,8 @@ def test_sources_list_has_credit_for_every_product(client):
         assert p["credit"] and p["source_url"] and isinstance(p["simulated"], bool)
 
 
-def test_site_clock_matches_sol_atlas_reference(client):
-    """Independent cross-check: the Sol Atlas site showed Perseverance sol 2039 and a 10m59s link delay on 2026-11-14 08:31 UTC.
+def test_site_clock_matches_independent_reference(client):
+    """Independent cross-check: a public mission-clock site showed Perseverance sol 2039 and a 10m59s link delay on 2026-11-14 08:31 UTC.
     Same formulas for the Gale/Curiosity clock: sol 5074 by hand (5213 Earth days / 1.02749)."""
     c = client.get(f"{B}/sites/gale/clock", params={"utc": "2026-11-14T08:31:31Z"}).json()
     assert c["mission_sol"] == 5074 and c["mission_name"].startswith("Curiosity")

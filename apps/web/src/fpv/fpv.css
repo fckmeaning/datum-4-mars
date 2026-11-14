@@ -1,0 +1,126 @@
+/* First-person (helmet) view. Tokens come from src/styles/tokens.css; restrained palette, no glow. */
+
+.fpv-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  background: #0b0f14;
+  color: var(--color-text, #e6edf3);
+  font-family: var(--font-ui, system-ui, sans-serif);
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+}
+.fpv-root:active { cursor: grabbing; }
+.fpv-root canvas { display: block; }
+
+.fpv-overlay { position: absolute; inset: 0; pointer-events: none; font-size: 12px; }
+
+/* visor: dark edges and one faint reflection, nothing coloured */
+.fpv-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 78% 74% at 50% 48%, rgba(0,0,0,0) 58%, rgba(4,6,9,0.38) 82%, rgba(4,6,9,0.78) 100%);
+}
+.fpv-glare {
+  position: absolute; inset: 0;
+  background: linear-gradient(118deg, rgba(255,255,255,0) 22%, rgba(255,255,255,0.035) 31%, rgba(255,255,255,0) 40%);
+}
+
+.fpv-num { font-family: var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.fpv-dim { color: var(--color-text-muted, #9da7b3); }
+
+/* compass tape */
+.fpv-top { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fpv-heading { display: flex; align-items: baseline; gap: 8px; padding: 2px 10px; background: rgba(11,15,20,0.55); border: 1px solid rgba(230,237,243,0.14); border-radius: 3px; }
+.fpv-heading-num { font-size: 17px; font-weight: 600; }
+.fpv-heading-pt { font-size: 11px; color: var(--color-text-muted, #9da7b3); letter-spacing: 0.08em; }
+.fpv-tape { overflow: visible; }
+.fpv-tick { stroke: rgba(230,237,243,0.55); stroke-width: 1; }
+.fpv-tick--major { stroke: rgba(230,237,243,0.9); }
+.fpv-tick--horizon { stroke: rgba(230,237,243,0.95); stroke-width: 1.5; }
+.fpv-tape-num { fill: rgba(230,237,243,0.7); font: 500 9px var(--font-mono, monospace); }
+.fpv-tape-cardinal { fill: var(--color-text, #e6edf3); font: 700 12px var(--font-mono, monospace); }
+.fpv-caret { fill: var(--color-accent, #e06a3b); }
+
+/* elevation ruler */
+.fpv-ruler { position: absolute; left: 22px; top: 0; }
+.fpv-ruler-num { fill: rgba(230,237,243,0.72); font: 500 9px var(--font-mono, monospace); }
+.fpv-ruler-note { fill: rgba(230,237,243,0.78); font: 600 9px var(--font-mono, monospace); letter-spacing: 0.06em; }
+.fpv-horizon-mark { fill: var(--color-accent, #e06a3b); }
+
+/* telemetry panels */
+.fpv-panel {
+  position: absolute; bottom: 18px; padding: 10px 14px; min-width: 176px;
+  background: rgba(11,15,20,0.6); border: 1px solid rgba(230,237,243,0.12); border-radius: 4px;
+  backdrop-filter: blur(3px);
+}
+.fpv-panel--left { left: 22px; }
+.fpv-panel--right { right: 22px; display: flex; flex-direction: column; gap: 8px; min-width: 214px; }
+.fpv-panel dl { margin: 0; display: grid; gap: 3px; }
+.fpv-panel dl > div { display: flex; justify-content: space-between; gap: 16px; }
+.fpv-panel dt { color: var(--color-text-dim, #6e7681); font-size: 10px; letter-spacing: 0.12em; }
+.fpv-panel dd { margin: 0; font-size: 12px; }
+
+.fpv-bar-head { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0.12em; color: var(--color-text-dim, #6e7681); margin-bottom: 3px; }
+.fpv-bar-head .fpv-num { color: var(--color-text, #e6edf3); letter-spacing: 0; }
+.fpv-bar-track { height: 3px; background: rgba(230,237,243,0.14); }
+.fpv-bar-fill { height: 100%; }
+.fpv-bar-fill--ok { background: var(--color-ok, #3fb950); }
+.fpv-bar-fill--warn { background: var(--color-warning, #d29922); }
+.fpv-bar-fill--crit { background: var(--color-danger, #f85149); }
+
+/* back to base */
+.fpv-base {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 8px;
+  background: rgba(11,15,20,0.6); border: 1px solid rgba(230,237,243,0.12); border-radius: 4px;
+}
+.fpv-base-ring { fill: none; stroke: rgba(230,237,243,0.3); stroke-width: 1; }
+.fpv-base-arrow { fill: var(--color-accent, #e06a3b); }
+.fpv-base-label { font-size: 10px; letter-spacing: 0.14em; color: var(--color-text-dim, #6e7681); }
+
+.fpv-keys {
+  position: absolute; top: 14px; right: 22px; max-width: 280px; text-align: right;
+  font-size: 10px; line-height: 1.5; color: var(--color-text-dim, #6e7681);
+}
+
+/* loading / error states */
+.fpv-status {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px;
+  padding: 24px; color: var(--color-text-muted, #9da7b3); background: #0b0f14;
+}
+.fpv-status strong { color: var(--color-text, #e6edf3); font-weight: 600; font-size: 14px; }
+
+.fpv-exit {
+  position: absolute; top: 14px; left: 22px; pointer-events: auto;
+  background: rgba(11,15,20,0.6); color: var(--color-text, #e6edf3);
+  border: 1px solid rgba(230,237,243,0.18); border-radius: 4px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.fpv-exit:hover { background: rgba(26,34,47,0.85); }
+.fpv-exit:focus-visible { outline: 2px solid var(--color-info, #58a6ff); outline-offset: 2px; }
+
+.fpv-beacon-label {
+  transform: translate(-50%, -100%); white-space: nowrap; pointer-events: none;
+  font: 500 11px var(--font-ui, sans-serif); color: #e6edf3;
+  padding: 1px 6px; background: rgba(11,15,20,0.62); border-left: 2px solid var(--color-accent, #e06a3b);
+}
+
+@media (max-width: 760px) {
+  .fpv-keys { display: none; }
+  .fpv-panel--right { right: 10px; min-width: 150px; }
+  .fpv-panel--left { left: 10px; min-width: 140px; }
+  .fpv-base { bottom: 112px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fpv-root { cursor: default; }
+}
+
+.fpv-credit {
+  transform: translate(-50%, 0); white-space: nowrap; pointer-events: none;
+  font: 500 10px var(--font-ui, sans-serif); color: var(--color-text-muted, #9da7b3);
+  padding: 1px 6px; background: rgba(11,15,20,0.55);
+}

@@ -1,0 +1,281 @@
+/* About and Methods: long-form pages. The app shell clips the window (html, body and #root are overflow:hidden), so these
+   pages scroll inside their own container. */
+
+.doc {
+  position: relative;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 24px 72px;
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  background:
+    radial-gradient(70% 50% at 82% -8%, color-mix(in srgb, var(--hz-accent) 14%, transparent), transparent 70%),
+    radial-gradient(60% 45% at 8% 4%, rgba(70, 110, 190, 0.12), transparent 70%),
+    var(--color-bg);
+}
+
+.doc__bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 18px 0;
+}
+.doc__brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--hz-accent);
+  text-decoration: none;
+}
+.doc__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.doc__btn {
+  padding: 9px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--hz-text);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+.doc__btn:hover {
+  background: color-mix(in srgb, var(--hz-accent) 14%, transparent);
+  border-color: var(--hz-accent);
+}
+.doc__btn:active {
+  transform: translateY(1px);
+}
+.doc__btn--primary {
+  border-color: transparent;
+  background: var(--hz-accent);
+  color: var(--color-on-accent);
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--hz-accent) 75%, transparent);
+}
+.doc__btn--primary:hover {
+  background: var(--hz-accent-2);
+  border-color: transparent;
+}
+.doc__btn--ghost {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--hz-accent) 70%, transparent);
+  color: var(--hz-accent);
+}
+
+.doc__wrap {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.doc__hero {
+  padding: 28px 0 32px;
+  animation: d4-rise 480ms var(--ease-out) backwards;
+}
+.doc__eyebrow {
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hz-accent);
+}
+.doc__title {
+  margin: 10px 0 12px;
+  font-size: clamp(2rem, 4.4vw, 3rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+.doc__lede {
+  max-width: 62ch;
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: #b9c6d4;
+}
+
+.doc__section {
+  margin-bottom: 22px;
+  padding: 26px 28px;
+  border: 1px solid var(--hz-line);
+  border-radius: 18px;
+  background: var(--glass-hairline) top / 100% 1px no-repeat, var(--glass-fill);
+  box-shadow: var(--glass-edge), var(--shadow-lg);
+  animation: d4-rise 520ms var(--ease-out) backwards;
+  animation-delay: calc(80ms + var(--i, 0) * 80ms);
+}
+.doc__section h2 {
+  margin-bottom: 12px;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.doc__section p {
+  margin-bottom: 12px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #c3cfdb;
+}
+.doc__section p strong,
+.doc__section li strong {
+  color: var(--hz-text);
+  font-weight: 650;
+}
+
+.doc__list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+.doc__list li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #c3cfdb;
+}
+.doc__list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--hz-accent);
+  transform: rotate(45deg);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hz-accent) 70%, transparent);
+}
+
+.doc__table-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+}
+.doc__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.doc__table th {
+  padding: 10px 14px;
+  text-align: left;
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hz-dim);
+  background: rgba(255, 255, 255, 0.03);
+}
+.doc__table td {
+  padding: 11px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #c9d4e0;
+}
+.doc__table tbody tr {
+  transition: background var(--transition-fast);
+}
+.doc__table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.doc__table td:first-child {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--hz-text);
+}
+.doc__pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.08em;
+}
+.doc__pill--sim {
+  color: #f6c453;
+  background: rgba(240, 180, 41, 0.14);
+}
+.doc__pill--ok {
+  color: var(--hz-accent);
+  background: color-mix(in srgb, var(--hz-accent) 14%, transparent);
+}
+
+.doc__funcs {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.doc__func {
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.doc__func:hover {
+  border-color: color-mix(in srgb, var(--hz-accent) 40%, transparent);
+  background: rgba(255, 255, 255, 0.045);
+}
+.doc__func-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.doc__func-head strong {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--hz-text);
+}
+.doc__func-head strong em {
+  margin-right: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--hz-accent) 16%, transparent);
+  color: var(--hz-accent);
+  font: 600 12px var(--font-mono);
+  font-style: normal;
+}
+.doc__unit {
+  font: 500 12px var(--font-mono);
+  color: var(--hz-dim);
+  white-space: nowrap;
+}
+.doc__func p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--hz-dim);
+}
+
+.doc__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+@media (max-width: 640px) {
+  .doc {
+    padding: 0 16px 56px;
+  }
+  .doc__bar {
+    flex-wrap: wrap;
+  }
+  .doc__section {
+    padding: 20px 18px;
+  }
+  .doc__func-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

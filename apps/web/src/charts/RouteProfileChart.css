@@ -1,0 +1,97 @@
+.route-profile-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  background: var(--color-surface-glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--color-surface-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  width: 100%;
+  position: relative;
+}
+
+.route-profile-chart__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  border-bottom: 1px solid rgba(230, 237, 243, 0.08);
+  padding-bottom: var(--space-xs);
+}
+
+.route-profile-chart__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.route-profile-chart__legend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--text-2xs);
+  flex-wrap: wrap;
+}
+
+.route-profile-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+}
+
+.route-profile-chart__legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.route-profile-chart__canvas-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  position: relative;
+}
+
+/* uPlot Dark Theme Overrides */
+.uplot {
+  font-family: var(--font-mono) !important;
+}
+
+.uplot .u-legend {
+  display: none !important; /* We render accessible custom legend */
+}
+
+.uplot .u-axis text {
+  fill: var(--color-text-muted) !important;
+  font-size: 10px !important;
+}
+
+.uplot .u-cursor-x,
+.uplot .u-cursor-y {
+  border-color: rgba(230, 237, 243, 0.4) !important;
+}
+
+.uplot .u-cursor-pt {
+  background: var(--color-accent) !important;
+  border-radius: 50%;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

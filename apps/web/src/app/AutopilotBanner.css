@@ -1,0 +1,108 @@
+.autopilot-banner {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 760px;
+  width: calc(100vw - 32px);
+  padding: 8px 18px;
+  background: rgba(10, 16, 26, 0.92);
+  border: 1px solid color-mix(in srgb, var(--hz-accent, #2dd4bf) 40%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 16px color-mix(in srgb, var(--hz-accent, #2dd4bf) 20%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #FFFFFF;
+  animation: autopilotSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes autopilotSlideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.autopilot-banner__indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.autopilot-banner__pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--hz-accent, #2dd4bf);
+  box-shadow: 0 0 10px var(--hz-accent, #2dd4bf);
+  animation: autopilotPulse 1.5s infinite;
+}
+
+@keyframes autopilotPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+    box-shadow: 0 0 16px var(--hz-accent, #2dd4bf);
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+.autopilot-banner__tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--hz-accent, #2dd4bf);
+}
+
+.autopilot-banner__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.autopilot-banner__caption {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #E2E8F0;
+  font-weight: 500;
+  margin: 0;
+}
+
+.autopilot-banner__cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  color: #CBD5E1;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.autopilot-banner__cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #FCA5A5;
+}

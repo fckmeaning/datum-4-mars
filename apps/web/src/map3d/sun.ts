@@ -11,6 +11,7 @@
  */
 
 import type { Vector3D } from "./types";
+import { apiFetch } from "../static/apiFetch";
 
 const DEG2RAD = Math.PI / 180;
 
@@ -121,7 +122,7 @@ export async function fetchSunPosition(
   utc = new Date().toISOString()
 ): Promise<{ azimuth_deg: number; elevation_deg: number }> {
   try {
-    const res = await fetch(
+    const res = await apiFetch(
       `/api/v1/sun?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&utc=${encodeURIComponent(utc)}`
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

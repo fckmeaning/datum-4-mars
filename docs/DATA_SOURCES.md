@@ -1,6 +1,6 @@
-# AreoNav Data Sources and Attribution
+# Datum-4 Data Sources and Attribution
 
-This document lists all datasets incorporated into or verified for AreoNav (marsnav),
+This document lists all datasets incorporated into or verified for Datum-4 (marsnav),
 combining active pipeline artifacts (`data/manifest.yaml`) and verified research references (`data/pipeline/SOURCES.md`).
 
 ## Master Data Sources Table

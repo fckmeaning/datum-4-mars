@@ -1,0 +1,32 @@
+.whats-here {
+  max-width: 360px;
+}
+
+.whats-here__coord {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--fs-caption);
+  color: var(--color-text-muted);
+}
+
+.whats-here__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--color-text-dim);
+  border-radius: var(--radius-xs);
+}
+
+.whats-here__copy:hover {
+  color: var(--color-text);
+  background: var(--row-hover);
+}
+
+.whats-here__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}

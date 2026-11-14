@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useAppStore } from "../state/store";
 
 interface MapControlsProps {
-  cursorCoords: { lat: number; lon: number } | null;
+  /** Unused since the live readout moved into the map (kept so existing callers compile). */
+  cursorCoords?: { lat: number; lon: number } | null;
   onWhereAmI?: () => void;
 }
 
-export function MapControls({ cursorCoords, onWhereAmI }: MapControlsProps) {
+export function MapControls({ onWhereAmI }: MapControlsProps) {
   const mode = useAppStore((s) => s.mode);
   const setMode = useAppStore((s) => s.setMode);
   const camera = useAppStore((s) => s.camera);
@@ -87,7 +88,7 @@ export function MapControls({ cursorCoords, onWhereAmI }: MapControlsProps) {
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255, 255, 255, 0.15)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-            color: mode === "3d" ? "var(--color-accent, #56B4E9)" : "#E6EDF3",
+            color: mode === "3d" ? "var(--hz-accent, #2dd4bf)" : "#E6EDF3",
             fontWeight: 700,
             fontSize: "12px",
             cursor: "pointer",
@@ -110,7 +111,7 @@ export function MapControls({ cursorCoords, onWhereAmI }: MapControlsProps) {
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255, 255, 255, 0.15)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-            color: "#56B4E9",
+            color: "var(--hz-accent, #2dd4bf)",
             fontWeight: 600,
             fontSize: "12px",
             cursor: "pointer",
@@ -131,7 +132,7 @@ export function MapControls({ cursorCoords, onWhereAmI }: MapControlsProps) {
             top: "70px",
             right: "20px",
             background: "rgba(22, 27, 34, 0.95)",
-            border: "1px solid #56B4E9",
+            border: "1px solid var(--hz-accent, #2dd4bf)",
             borderRadius: "8px",
             padding: "10px 14px",
             color: "#FFFFFF",
@@ -144,52 +145,6 @@ export function MapControls({ cursorCoords, onWhereAmI }: MapControlsProps) {
           <strong>Autonomous Fix (F13/F15):</strong> Estimated position Bradbury Landing · Error ellipse ±25 m.
         </div>
       )}
-
-      {/* Bottom Bar: Scale Bar & Cursor Readout */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "16px",
-          right: "20px",
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          background: "var(--color-surface, rgba(16, 24, 38, 0.8))",
-          backdropFilter: "blur(12px)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRadius: "8px",
-          padding: "6px 14px",
-          fontFamily: "var(--font-mono, monospace)",
-          fontSize: "11px",
-          color: "#8B949E",
-          zIndex: 50,
-        }}
-      >
-        {/* Scale Bar */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span>Scale</span>
-          <div
-            style={{
-              width: "60px",
-              height: "4px",
-              background: "#56B4E9",
-              borderRadius: "2px",
-            }}
-          />
-          <span>1 km</span>
-        </div>
-
-        {/* Cursor Coordinates */}
-        <div>
-          {cursorCoords ? (
-            <span>
-              {cursorCoords.lat.toFixed(4)}° S, {cursorCoords.lon.toFixed(4)}° E
-            </span>
-          ) : (
-            <span>-4.7200° S, 137.4000° E</span>
-          )}
-        </div>
-      </div>
     </>
   );
 }

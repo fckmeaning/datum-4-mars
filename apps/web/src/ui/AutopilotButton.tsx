@@ -17,16 +17,16 @@ export function AutopilotButton({
       type="button"
       role="switch"
       aria-checked={isRunning}
-      aria-label={`Autopilot simulation: ${isRunning ? "engaged" : "standby"}`}
+      aria-label={`Guided tour: ${isRunning ? "running" : "idle"}`}
       onClick={() => onToggle(!isRunning)}
       className={`autopilot-btn ${
         isRunning ? "autopilot-btn--active" : ""
       } ${className}`.trim()}
     >
       <span className="autopilot-btn__indicator" aria-hidden="true" />
-      <span className="autopilot-btn__label">Autopilot</span>
+      <span className="autopilot-btn__label">Guided tour</span>
       <span className="autopilot-btn__status">
-        [{isRunning ? "ENGAGED" : "STANDBY"}]
+        [{isRunning ? "LIVE" : "READY"}]
       </span>
     </button>
   );

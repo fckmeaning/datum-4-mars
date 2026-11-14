@@ -1,5 +1,6 @@
 import React from "react";
 import { AutopilotButton } from "./AutopilotButton";
+import { RecButton, SoundButton } from "../app/MediaButtons";
 import { InfoIcon } from "./Icons";
 import "./BottomBar.css";
 
@@ -52,27 +53,10 @@ export function BottomBar({
         />
       </div>
 
-      {/* Right section: Disabled feature stubs with tooltips */}
+      {/* Right section: record the tab and the sound of Mars */}
       <div className="bottom-bar__right">
-        <button
-          type="button"
-          disabled
-          title="coming soon"
-          className="bottom-bar__btn"
-          aria-label="Record flight simulation (coming soon)"
-        >
-          REC
-        </button>
-
-        <button
-          type="button"
-          disabled
-          title="coming soon"
-          className="bottom-bar__btn"
-          aria-label="Audio telemetry sound effects (coming soon)"
-        >
-          SOUND
-        </button>
+        <RecButton className="bottom-bar__btn" />
+        <SoundButton className="bottom-bar__btn" />
       </div>
     </footer>
   );

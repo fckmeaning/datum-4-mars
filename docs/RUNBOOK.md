@@ -1,4 +1,4 @@
-# AreoNav (marsnav) — Operational Runbook
+# Datum-4 (marsnav) — Operational Runbook
 
 This guide covers developer onboarding, local environment setup, running the backend API and frontend PWA, executing verification tests, prompt rebuilding, and interacting with the asynchronous agent conveyor mailbox.
 

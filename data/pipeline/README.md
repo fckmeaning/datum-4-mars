@@ -1,4 +1,4 @@
-# AreoNav (marsnav) Data Pipeline
+# Datum-4 (marsnav) Data Pipeline
 
 Planetary GIS data processing and raster preparation for the Gale crater / lower Mount Sharp Area of Interest (AOI).
 
