@@ -1,0 +1,24 @@
+{
+  "contract_version": 1,
+  "status": "PROVISIONAL [verify]: AOI to be refined by W1 from the Curiosity traverse and HiRISE DTM coverage",
+  "body": "Mars",
+  "sphere_radius_m": 3396190.0,
+  "latitude_convention": "planetocentric",
+  "longitude_convention": "east-positive, [-180, 180)",
+  "height_reference": "MOLA areoid, metres",
+  "proj_geographic": "+proj=longlat +R=3396190 +no_defs +type=crs",
+  "proj_aoi": "+proj=tmerc +lat_0=-4.72 +lon_0=137.40 +k=1 +x_0=0 +y_0=0 +R=3396190 +units=m +no_defs +type=crs",
+  "aoi": {
+    "site_id": "gale",
+    "name": "Gale crater - lower Mount Sharp",
+    "center": { "lat": -4.72, "lon": 137.40 },
+    "bbox_geo": { "lat_min": -4.89, "lat_max": -4.55, "lon_min": 137.27, "lon_max": 137.53 },
+    "notes": "x is approximately east and y approximately north in the AOI projection (local ENU-like metres)"
+  },
+  "base_default": {
+    "name": "Bradbury Landing (habitat)",
+    "lat": -4.5895,
+    "lon": 137.4417,
+    "source": "Curiosity landing site, NASA/JPL"
+  }
+}

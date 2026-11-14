@@ -1,0 +1,38 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+*.egg-info/
+.numba_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# Data (raw downloads and caches never go to git; only the small demo pack does)
+data/raw/
+data/cache/
+data/processed/*
+!data/processed/demo/
+!data/processed/.gitkeep
+
+# Secrets
+.env
+.env.*
+secrets/
+
+# Conveyor runtime logs
+conveyor/runs/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

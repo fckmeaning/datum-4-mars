@@ -1,0 +1,39 @@
+{
+  "contract_version": 1,
+  "note": "Zone ownership. W2-W5 are implemented by the CEO (Claude Code) per docs/DECISIONS.md D-05. Paths are repo-relative prefixes with forward slashes.",
+  "W1": {
+    "owner": "antigravity",
+    "title": "Data & GIS",
+    "paths": ["data/pipeline/", "data/manifest.yaml", "data/processed/"],
+    "web_src_prefixes": []
+  },
+  "W6": {
+    "owner": "antigravity",
+    "title": "Frontend core, Satellite-mode main screen, 2D map",
+    "paths": ["apps/web/src/app/", "apps/web/src/state/", "apps/web/src/api/", "apps/web/src/map2d/", "apps/web/src/pages/", "apps/web/src/mocks/"],
+    "web_src_prefixes": ["src/app/", "src/state/", "src/api/", "src/map2d/", "src/pages/", "src/mocks/"]
+  },
+  "W7": {
+    "owner": "antigravity",
+    "title": "3D terrain and Globe mode",
+    "paths": ["apps/web/src/map3d/", "apps/web/src/globe/"],
+    "web_src_prefixes": ["src/map3d/", "src/globe/"]
+  },
+  "W8": {
+    "owner": "antigravity",
+    "title": "UX/UI design system, charts, orientation UI, HUD, PWA, TS math port",
+    "paths": ["apps/web/src/ui/", "apps/web/src/hud/", "apps/web/src/charts/", "apps/web/src/orientation/", "apps/web/src/settings/", "apps/web/src/pwa/", "apps/web/src/workers/", "apps/web/src/styles/", "apps/web/public/", "packages/marsnav-ts/"],
+    "web_src_prefixes": ["src/ui/", "src/hud/", "src/charts/", "src/orientation/", "src/settings/", "src/pwa/", "src/workers/", "src/styles/"]
+  },
+  "W9": {
+    "owner": "antigravity",
+    "title": "QA, CI, docs, pitch & submission",
+    "paths": ["tests/", "ops/", ".github/", "submission/", "docs/DATA_SOURCES.md", "docs/METHODS.md", "docs/RUNBOOK.md", "docs/RISKS.md"],
+    "web_src_prefixes": []
+  },
+  "CEO": {
+    "owner": "claude-code",
+    "title": "Contracts, math core (W2-W4), API (W5), integration",
+    "paths": ["contracts/", "config/", "conveyor/", "prompts/", "packages/marsnav/", "apps/api/", "docs/MATH.md", "docs/DECISIONS.md", "docs/STATE.md", "docs/STATUS.md", "docs/PRODUCT_SPEC.md", "docs/ARCHITECTURE.md", "docs/RULES.md", "docs/WORK_PROGRAM.md", "docs/PITCH_SPEC.md", "apps/web/package.json", "apps/web/package-lock.json", "apps/web/vite.config.ts", "apps/web/tsconfig.json", "apps/web/index.html", "apps/web/src/main.tsx", "apps/web/src/test/", "apps/web/src/api/schema.d.ts", "apps/web/scripts/", ".gitignore", "README.md", "requirements.txt", "requirements.lock.txt"]
+  }
+}

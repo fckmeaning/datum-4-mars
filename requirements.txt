@@ -1,0 +1,16 @@
+numpy
+scipy
+numba
+pyproj
+rasterio
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+pyyaml
+cachetools
+pytest
+hypothesis
+ruff
+scikit-image
+-e packages/marsnav

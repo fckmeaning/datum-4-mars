@@ -1,0 +1,946 @@
+openapi: 3.1.0
+info:
+  title: marsnav API
+  version: "1.0.0"
+  description: |
+    Contract v1 (owner: CEO; changes only via CONTRACT CHANGE REQUEST).
+    Mars surface navigation: layers, places, routes (FASTEST / SAFEST / BALANCED / SCIENCE),
+    orientation without GPS, orbiters and relay contact windows.
+    Coordinates: planetocentric latitude, east-positive longitude in [-180, 180), Mars sphere R = 3396190 m.
+    Local x/y are metres in the AOI projection from contracts/projection.json (x ~ east, y ~ north).
+    Units are SI unless the field name says otherwise (_deg, _h, _kJ, _mSv, _l ...).
+    Static COG rasters are served under /data/... (LayerMeta.cog_url), not under /api/v1.
+    Every response that contains modelled or synthetic values lists them (simulated, simulated_inputs, assumptions).
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+tags:
+  - name: system
+  - name: sites
+  - name: places
+  - name: routes
+  - name: environment
+  - name: localize
+  - name: alerts
+  - name: orbits
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+
+  /sites:
+    get:
+      tags: [sites]
+      operationId: listSites
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Site" } } } }
+
+  /sites/{site_id}:
+    get:
+      tags: [sites]
+      operationId: getSite
+      parameters: [ { $ref: "#/components/parameters/SiteIdPath" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Site" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /sites/{site_id}/layers:
+    get:
+      tags: [sites]
+      operationId: listLayers
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - { name: level, in: query, required: false, schema: { $ref: "#/components/schemas/DataLevel" } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LayerMeta" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /sites/{site_id}/places:
+    get:
+      tags: [places]
+      operationId: listSitePlaces
+      description: All places of a site for the Points of Interest menu (base, science targets, POV spots, landmarks, reference path points).
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: array, items: { type: string, enum: [gazetteer, mission_informal, base, user, coordinate] } }
+          style: form
+          explode: true
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Place" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /sites/{site_id}/whats-here:
+    get:
+      tags: [sites]
+      operationId: whatsHere
+      description: Values of every layer at a point plus derived terrain/environment numbers ("What's here?" context menu).
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - { $ref: "#/components/parameters/Lat" }
+        - { $ref: "#/components/parameters/Lon" }
+        - { $ref: "#/components/parameters/UtcOptional" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PointReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /layers/{layer_id}/meta:
+    get:
+      tags: [sites]
+      operationId: getLayerMeta
+      parameters: [ { name: layer_id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LayerMeta" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /layers/{layer_id}/sample:
+    get:
+      tags: [sites]
+      operationId: sampleLayer
+      parameters:
+        - { name: layer_id, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/Lat" }
+        - { $ref: "#/components/parameters/Lon" }
+        - { $ref: "#/components/parameters/UtcOptional" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LayerSample" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /places/search:
+    get:
+      tags: [places]
+      operationId: searchPlaces
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: site_id, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        "200":
+          description: Fuzzy matches by name and aliases; a "lat, lon" query returns a synthetic coordinate place.
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Place" } } } }
+
+  /route:
+    post:
+      tags: [routes]
+      operationId: planRoute
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RouteRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RouteResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/NoRoute" }
+        "503": { $ref: "#/components/responses/ComputeLimit" }
+
+  /route/alternatives:
+    post:
+      tags: [routes]
+      operationId: routeAlternatives
+      description: One route per requested profile, for the route-alternative cards.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AlternativesRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AlternativesResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/NoRoute" }
+
+  /route/pareto:
+    post:
+      tags: [routes]
+      operationId: routePareto
+      description: P1. Non-dominated routes on the time-vs-risk front and the knee point (BALANCED).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ParetoRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ParetoResult" } } } }
+        "422": { $ref: "#/components/responses/NoRoute" }
+
+  /route/order:
+    post:
+      tags: [routes]
+      operationId: routeOrder
+      description: P1. Optimal visiting order of waypoints (Held-Karp for n <= 13, else nearest neighbour + 2-opt).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/OrderRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OrderResult" } } } }
+
+  /route/uncertainty:
+    post:
+      tags: [routes]
+      operationId: routeUncertainty
+      description: P1. Monte Carlo over ASSUMPTION parameters (F38).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UncertaintyRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UncertaintyResult" } } } }
+
+  /route/back-to-base:
+    post:
+      tags: [routes]
+      operationId: backToBase
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BackToBaseRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BackToBaseResult" } } } }
+        "422": { $ref: "#/components/responses/NoRoute" }
+
+  /route/off-route:
+    post:
+      tags: [routes]
+      operationId: offRoute
+      description: P1. Distance to the active route, progress along it and whether a reroute is due (F53).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/OffRouteRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OffRouteResult" } } } }
+
+  /sun:
+    get:
+      tags: [environment]
+      operationId: getSun
+      parameters:
+        - { $ref: "#/components/parameters/Lat" }
+        - { $ref: "#/components/parameters/Lon" }
+        - { $ref: "#/components/parameters/UtcRequired" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SunState" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /environment:
+    get:
+      tags: [environment]
+      operationId: getEnvironment
+      parameters:
+        - { name: site_id, in: query, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/Lat" }
+        - { $ref: "#/components/parameters/Lon" }
+        - { $ref: "#/components/parameters/UtcRequired" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EnvironmentSample" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /localize/sun-compass:
+    post:
+      tags: [localize]
+      operationId: sunCompass
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SunCompassRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SunCompassResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /localize/resection:
+    post:
+      tags: [localize]
+      operationId: resection
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ResectionRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LocalizeResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unsolvable" }
+
+  /localize/skyline:
+    post:
+      tags: [localize]
+      operationId: skylineMatch
+      description: P1. Position and heading from an observed horizon profile (F43).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SkylineRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SkylineResult" } } } }
+        "422": { $ref: "#/components/responses/Unsolvable" }
+
+  /alerts/space-weather:
+    get:
+      tags: [alerts]
+      operationId: spaceWeatherAlerts
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: mode, in: query, required: false, schema: { $ref: "#/components/schemas/AlertMode" } }
+      responses:
+        "200":
+          description: Live alerts need NASA_API_KEY on the server; replay/simulated alerts are always labelled.
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Alert" } } } }
+
+  /orbiters:
+    get:
+      tags: [orbits]
+      operationId: listOrbiters
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Orbiter" } } } }
+
+  /orbiters/states:
+    get:
+      tags: [orbits]
+      operationId: orbiterStates
+      parameters: [ { $ref: "#/components/parameters/UtcRequired" } ]
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/OrbiterState" } } } }
+
+  /comms/windows:
+    get:
+      tags: [orbits]
+      operationId: commsWindows
+      description: P1. Relay contact windows over a site, masked by the terrain horizon (F50, F51).
+      parameters:
+        - { name: site_id, in: query, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: mask_deg, in: query, required: false, schema: { type: number, minimum: 0, maximum: 45 } }
+        - { $ref: "#/components/parameters/LatOptional" }
+        - { $ref: "#/components/parameters/LonOptional" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ContactWindow" } } } }
+
+  /earth/light-time:
+    get:
+      tags: [orbits]
+      operationId: earthLightTime
+      description: P1. One-way Earth-Mars signal delay from approximate planetary elements (F52).
+      parameters: [ { $ref: "#/components/parameters/UtcRequired" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LightTime" } } } }
+
+components:
+  parameters:
+    SiteIdPath: { name: site_id, in: path, required: true, schema: { type: string } }
+    Lat: { name: lat, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+    Lon: { name: lon, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+    LatOptional: { name: lat, in: query, required: false, schema: { type: number, minimum: -90, maximum: 90 } }
+    LonOptional: { name: lon, in: query, required: false, schema: { type: number, minimum: -180, maximum: 180 } }
+    UtcRequired: { name: utc, in: query, required: true, schema: { type: string, format: date-time } }
+    UtcOptional: { name: utc, in: query, required: false, schema: { type: string, format: date-time } }
+
+  responses:
+    BadRequest: { description: Invalid input, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    NotFound: { description: Unknown id, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    NoRoute: { description: No feasible route under the hard constraints, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    Unsolvable: { description: Geometry or data do not allow a solution, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    ComputeLimit: { description: Request exceeds compute limits, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, examples: ["NO_ROUTE", "OUT_OF_AOI", "INVALID_INPUT"] }
+        message: { type: string, description: Human-readable, says what happened and what to do }
+        details: { type: object, additionalProperties: true }
+
+    Health:
+      type: object
+      required: [status, api_version, contract_version]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        api_version: { type: string }
+        contract_version: { type: integer }
+        data_levels: { type: array, items: { $ref: "#/components/schemas/DataLevel" } }
+
+    DataLevel: { type: string, enum: [L0, L1, L2, L3] }
+    Profile: { type: string, enum: [FASTEST, SAFEST, BALANCED, SCIENCE] }
+    LayerFamily: { type: string, enum: [topography, optical, thermal, spectral, radiation, atmosphere, geology, comms, hazard, cost] }
+    AlertMode: { type: string, enum: [live, replay, simulated] }
+    Accuracy: { type: string, enum: [approximate, spice] }
+    LimitingFactor: { type: string, enum: [time, energy, dose, hazard, slope, roughness, shadow, thermal, comms, science] }
+
+    GeoPoint:
+      type: object
+      required: [lat, lon]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+
+    XY:
+      type: object
+      required: [x, y]
+      properties:
+        x: { type: number, description: metres east in the AOI projection }
+        y: { type: number, description: metres north in the AOI projection }
+
+    BBox:
+      type: object
+      required: [lat_min, lat_max, lon_min, lon_max]
+      properties:
+        lat_min: { type: number }
+        lat_max: { type: number }
+        lon_min: { type: number }
+        lon_max: { type: number }
+
+    Site:
+      type: object
+      required: [id, name, center, bbox, proj_aoi, base, data_levels, default_level]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        center: { $ref: "#/components/schemas/GeoPoint" }
+        bbox: { $ref: "#/components/schemas/BBox" }
+        proj_aoi: { type: string, description: PROJ string of the AOI projection }
+        base: { $ref: "#/components/schemas/Place" }
+        data_levels: { type: array, items: { $ref: "#/components/schemas/DataLevel" } }
+        default_level: { $ref: "#/components/schemas/DataLevel" }
+        hazard_resolution_m: { type: number, description: Hazards smaller than this are not resolved }
+        globe_texture_url: { type: [string, "null"] }
+
+    LayerMeta:
+      type: object
+      required: [id, site_id, family, name, unit, level, time_dependent, credit, simulated, cog_url]
+      properties:
+        id: { type: string }
+        site_id: { type: string }
+        family: { $ref: "#/components/schemas/LayerFamily" }
+        name: { type: string }
+        unit: { type: string }
+        value_range: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+        nodata: { type: [number, "null"] }
+        colormap: { type: string, examples: [cividis, magma, inferno, plasma, viridis, gray, okabe-ito] }
+        categories: { type: array, items: { type: object, properties: { value: { type: number }, label: { type: string }, color: { type: string } } } }
+        resolution_m: { type: number }
+        level: { $ref: "#/components/schemas/DataLevel" }
+        time_dependent: { type: boolean }
+        valid_time: { type: [string, "null"], format: date-time }
+        source_ids: { type: array, items: { type: string } }
+        credit: { type: string }
+        simulated: { type: boolean }
+        display_tint: { type: boolean, description: true when a grayscale product is tinted for display }
+        uncertainty_note: { type: string }
+        cog_url: { type: string, description: Relative URL of the COG under /data }
+
+    LayerSample:
+      type: object
+      required: [layer_id, lat, lon, value, unit, simulated]
+      properties:
+        layer_id: { type: string }
+        lat: { type: number }
+        lon: { type: number }
+        x: { type: number }
+        y: { type: number }
+        value: { type: [number, "null"] }
+        unit: { type: string }
+        utc: { type: [string, "null"], format: date-time }
+        simulated: { type: boolean }
+
+    PointReport:
+      type: object
+      required: [site_id, point, xy, samples]
+      properties:
+        site_id: { type: string }
+        point: { $ref: "#/components/schemas/GeoPoint" }
+        xy: { $ref: "#/components/schemas/XY" }
+        utc: { type: [string, "null"], format: date-time }
+        elevation_m: { type: [number, "null"] }
+        slope_deg: { type: [number, "null"] }
+        aspect_deg: { type: [number, "null"] }
+        roughness_m: { type: [number, "null"] }
+        sky_fraction: { type: [number, "null"] }
+        shadowed: { type: [boolean, "null"] }
+        surface_temp_K: { type: [number, "null"] }
+        dose_rate_mSv_h: { type: [number, "null"] }
+        thermal_inertia: { type: [number, "null"] }
+        science_value: { type: [number, "null"] }
+        samples: { type: array, items: { $ref: "#/components/schemas/LayerSample" } }
+        simulated_fields: { type: array, items: { type: string } }
+
+    PovImage:
+      type: object
+      required: [url, credit, position_quality]
+      properties:
+        url: { type: string }
+        thumbnail_url: { type: [string, "null"] }
+        credit: { type: string }
+        camera: { type: [string, "null"] }
+        sol: { type: [integer, "null"] }
+        position_quality: { type: string, enum: [exact, approximate] }
+
+    Place:
+      type: object
+      required: [id, name, kind, lat, lon, source]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        aliases: { type: array, items: { type: string } }
+        kind: { type: string, enum: [gazetteer, mission_informal, base, user, coordinate] }
+        lat: { type: number }
+        lon: { type: number }
+        x: { type: [number, "null"] }
+        y: { type: [number, "null"] }
+        source: { type: string }
+        description: { type: [string, "null"] }
+        science_target: { type: boolean }
+        pov_image: { oneOf: [ { $ref: "#/components/schemas/PovImage" }, { type: "null" } ] }
+
+    Waypoint:
+      type: object
+      description: Exactly one of place_id, lat+lon, or x+y must be given.
+      properties:
+        place_id: { type: [string, "null"] }
+        lat: { type: [number, "null"] }
+        lon: { type: [number, "null"] }
+        x: { type: [number, "null"] }
+        y: { type: [number, "null"] }
+        role: { type: string, enum: [start, via, science, goal], default: via }
+        dwell_min: { type: number, minimum: 0, maximum: 240, default: 0 }
+
+    AstronautProfile:
+      type: object
+      description: Every field optional; missing fields use config/params.yaml.
+      properties:
+        mass_astronaut_kg: { type: number, minimum: 40, maximum: 150 }
+        mass_suit_kg: { type: number, minimum: 0, maximum: 200 }
+        mass_payload_kg: { type: number, minimum: 0, maximum: 60 }
+        v_flat_m_s: { type: number, minimum: 0.2, maximum: 2.5 }
+        theta_max_deg: { type: number, minimum: 5, maximum: 40 }
+        step_max_m: { type: number, minimum: 0.1, maximum: 2 }
+        T_min_K: { type: number }
+        T_max_K: { type: number }
+        eva_max_s: { type: number, minimum: 600, maximum: 43200 }
+        o2_capacity_l: { type: number, minimum: 50, maximum: 2000 }
+        reserve_fraction: { type: number, minimum: 0, maximum: 0.9 }
+
+    Weights:
+      type: object
+      properties:
+        w_tau: { type: number, minimum: 0 }
+        w_E: { type: number, minimum: 0 }
+        w_D: { type: number, minimum: 0 }
+        w_H: { type: number, minimum: 0 }
+        alpha: { type: number, minimum: 0, exclusiveMaximum: 1 }
+
+    Constraints:
+      type: object
+      properties:
+        max_duration_s: { type: [number, "null"] }
+        max_energy_kJ: { type: [number, "null"] }
+        max_dose_mSv: { type: [number, "null"] }
+        max_slope_deg: { type: [number, "null"] }
+        avoid_shadow: { type: boolean, default: false }
+        require_comms: { type: boolean, default: false }
+
+    RouteRequest:
+      type: object
+      required: [site_id, waypoints]
+      properties:
+        site_id: { type: string }
+        waypoints: { type: array, minItems: 2, maxItems: 20, items: { $ref: "#/components/schemas/Waypoint" } }
+        profile: { $ref: "#/components/schemas/Profile" }
+        weights: { $ref: "#/components/schemas/Weights" }
+        constraints: { $ref: "#/components/schemas/Constraints" }
+        start_utc: { type: [string, "null"], format: date-time, description: Defaults to server time }
+        astronaut: { $ref: "#/components/schemas/AstronautProfile" }
+        optimize_order: { type: boolean, default: false }
+        return_to_start: { type: boolean, default: false }
+        algorithm: { type: string, enum: [astar, theta], default: astar }
+        level: { $ref: "#/components/schemas/DataLevel" }
+
+    CostBreakdown:
+      type: object
+      description: Normalised contributions to the segment cost; time+energy+dose+hazard multiplied by the science factor equals cost.
+      required: [time, energy, dose, hazard, science_factor]
+      properties:
+        time: { type: number }
+        energy: { type: number }
+        dose: { type: number }
+        hazard: { type: number }
+        science_factor: { type: number, description: "(1 - alpha * S), in (0, 1]" }
+
+    SunAt:
+      type: object
+      properties:
+        elevation_deg: { type: number }
+        azimuth_deg: { type: number }
+        shadowed: { type: boolean }
+
+    Segment:
+      type: object
+      required: [i, length_m, duration_s, slope_deg, components, cost, limiting_factor]
+      properties:
+        i: { type: integer }
+        start: { $ref: "#/components/schemas/GeoPoint" }
+        end: { $ref: "#/components/schemas/GeoPoint" }
+        length_m: { type: number }
+        duration_s: { type: number }
+        slope_deg: { type: number }
+        ascent_m: { type: number }
+        components: { $ref: "#/components/schemas/CostBreakdown" }
+        cost: { type: number }
+        limiting_factor: { $ref: "#/components/schemas/LimitingFactor" }
+        t_start_utc: { type: [string, "null"], format: date-time }
+        sun: { $ref: "#/components/schemas/SunAt" }
+        temp_K: { type: [number, "null"] }
+        dose_rate_mSv_h: { type: [number, "null"] }
+        energy_kJ: { type: number }
+        o2_l: { type: number }
+
+    Totals:
+      type: object
+      required: [time_s, length_m, ascent_m, descent_m, max_slope_deg, dose_mSv, energy_kJ, o2_l]
+      properties:
+        time_s: { type: number }
+        length_m: { type: number }
+        ascent_m: { type: number }
+        descent_m: { type: number }
+        max_slope_deg: { type: number }
+        dose_mSv: { type: number }
+        energy_kJ: { type: number }
+        o2_l: { type: number }
+        min_temp_K: { type: [number, "null"] }
+        shadow_fraction: { type: [number, "null"] }
+        science_score: { type: [number, "null"] }
+        return_margin: { type: [number, "null"], description: Minimum remaining-resource margin along the route (P1) }
+        risk: { type: number, description: Normalised risk used for SAFEST and the Pareto front }
+
+    Violation:
+      type: object
+      required: [kind, message]
+      properties:
+        kind: { type: string }
+        message: { type: string }
+        at_index: { type: [integer, "null"] }
+
+    Feasibility:
+      type: object
+      required: [ok, violations]
+      properties:
+        ok: { type: boolean }
+        violations: { type: array, items: { $ref: "#/components/schemas/Violation" } }
+
+    LineString:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { type: string, const: LineString }
+        coordinates: { type: array, items: { type: array, items: { type: number }, minItems: 2, maxItems: 3 }, description: "[lon, lat, elevation_m?]" }
+
+    Quantiles:
+      type: object
+      description: "[p5, p50, p95]"
+      properties:
+        time_s: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        dose_mSv: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        energy_kJ: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        o2_l: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+
+    RouteResult:
+      type: object
+      required: [route_id, site_id, profile, geometry, xy, totals, segments, feasibility, assumptions, data_levels, simulated_inputs]
+      properties:
+        route_id: { type: string }
+        site_id: { type: string }
+        profile: { $ref: "#/components/schemas/Profile" }
+        weights: { $ref: "#/components/schemas/Weights" }
+        geometry: { $ref: "#/components/schemas/LineString" }
+        xy: { type: array, items: { type: array, items: { type: number }, minItems: 2, maxItems: 2 } }
+        waypoint_order: { type: array, items: { type: integer } }
+        totals: { $ref: "#/components/schemas/Totals" }
+        segments: { type: array, items: { $ref: "#/components/schemas/Segment" } }
+        feasibility: { $ref: "#/components/schemas/Feasibility" }
+        uncertainty: { oneOf: [ { $ref: "#/components/schemas/Quantiles" }, { type: "null" } ] }
+        assumptions: { type: array, items: { type: string } }
+        data_levels: { type: array, items: { $ref: "#/components/schemas/DataLevel" } }
+        simulated_inputs: { type: array, items: { type: string } }
+        computed_ms: { type: number }
+
+    AlternativesRequest:
+      allOf:
+        - { $ref: "#/components/schemas/RouteRequest" }
+        - type: object
+          properties:
+            profiles: { type: array, items: { $ref: "#/components/schemas/Profile" }, default: [FASTEST, SAFEST, BALANCED, SCIENCE] }
+
+    AlternativesResult:
+      type: object
+      required: [routes]
+      properties:
+        routes: { type: array, items: { $ref: "#/components/schemas/RouteResult" } }
+        best_time_route_id: { type: [string, "null"] }
+        best_risk_route_id: { type: [string, "null"] }
+
+    ParetoRequest:
+      allOf:
+        - { $ref: "#/components/schemas/RouteRequest" }
+        - type: object
+          properties:
+            n_points: { type: integer, minimum: 3, maximum: 9, default: 7 }
+
+    ParetoResult:
+      type: object
+      required: [routes, front, knee_route_id]
+      properties:
+        routes: { type: array, items: { $ref: "#/components/schemas/RouteResult" } }
+        front: { type: array, items: { type: object, properties: { route_id: { type: string }, time_s: { type: number }, risk: { type: number } } } }
+        knee_route_id: { type: string }
+
+    OrderRequest:
+      type: object
+      required: [site_id, waypoints]
+      properties:
+        site_id: { type: string }
+        waypoints: { type: array, minItems: 3, maxItems: 20, items: { $ref: "#/components/schemas/Waypoint" } }
+        profile: { $ref: "#/components/schemas/Profile" }
+        start_utc: { type: [string, "null"], format: date-time }
+        return_to_start: { type: boolean, default: true }
+
+    OrderResult:
+      type: object
+      required: [order, cost_matrix, total_cost, method]
+      properties:
+        order: { type: array, items: { type: integer } }
+        cost_matrix: { type: array, items: { type: array, items: { type: number } } }
+        total_cost: { type: number }
+        method: { type: string, enum: [held_karp, nn_2opt] }
+
+    UncertaintyRequest:
+      type: object
+      required: [route]
+      properties:
+        route: { $ref: "#/components/schemas/RouteRequest" }
+        runs: { type: integer, minimum: 20, maximum: 200, default: 100 }
+        seed: { type: integer, default: 42 }
+
+    UncertaintyResult:
+      type: object
+      required: [quantiles, runs, seed]
+      properties:
+        route_id: { type: [string, "null"] }
+        quantiles: { $ref: "#/components/schemas/Quantiles" }
+        runs: { type: integer }
+        seed: { type: integer }
+        varied_parameters: { type: array, items: { type: string } }
+
+    BackToBaseRequest:
+      type: object
+      required: [site_id, position]
+      properties:
+        site_id: { type: string }
+        position: { $ref: "#/components/schemas/GeoPoint" }
+        base: { oneOf: [ { $ref: "#/components/schemas/GeoPoint" }, { type: "null" } ] }
+        start_utc: { type: [string, "null"], format: date-time }
+        profile: { $ref: "#/components/schemas/Profile" }
+        astronaut: { $ref: "#/components/schemas/AstronautProfile" }
+
+    BackToBaseResult:
+      type: object
+      required: [bearing_deg, distance_m, eta_s, dose_mSv, route]
+      properties:
+        bearing_deg: { type: number, description: Initial bearing along the route, degrees clockwise from north }
+        straight_bearing_deg: { type: number }
+        distance_m: { type: number, description: Route length }
+        straight_distance_m: { type: number }
+        eta_s: { type: number }
+        dose_mSv: { type: number }
+        route: { $ref: "#/components/schemas/RouteResult" }
+
+    OffRouteRequest:
+      type: object
+      required: [route_xy, position]
+      properties:
+        route_xy: { type: array, minItems: 2, items: { type: array, items: { type: number }, minItems: 2, maxItems: 2 } }
+        position: { $ref: "#/components/schemas/GeoPoint" }
+        recent_distances_m: { type: array, items: { type: number }, description: Previous fixes' distances, newest last }
+
+    OffRouteResult:
+      type: object
+      required: [distance_m, progress_m, progress_fraction, reroute]
+      properties:
+        distance_m: { type: number }
+        progress_m: { type: number }
+        progress_fraction: { type: number }
+        nearest: { $ref: "#/components/schemas/GeoPoint" }
+        reroute: { type: boolean }
+
+    SunState:
+      type: object
+      required: [utc, msd, ls_deg, lmst_h, ltst_h, elevation_deg, azimuth_deg, declination_deg]
+      properties:
+        utc: { type: string, format: date-time }
+        msd: { type: number }
+        ls_deg: { type: number }
+        lmst_h: { type: number }
+        ltst_h: { type: number }
+        elevation_deg: { type: number }
+        azimuth_deg: { type: number, description: Clockwise from north }
+        declination_deg: { type: number }
+        sun_distance_au: { type: number }
+        irradiance_wm2: { type: [number, "null"] }
+
+    EnvironmentSample:
+      type: object
+      required: [site_id, point, utc, sun, pressure_pa, dose_rate_mSv_h, sky_fraction, shadowed]
+      properties:
+        site_id: { type: string }
+        point: { $ref: "#/components/schemas/GeoPoint" }
+        utc: { type: string, format: date-time }
+        sun: { $ref: "#/components/schemas/SunState" }
+        surface_temp_K: { type: [number, "null"] }
+        air_temp_K: { type: [number, "null"] }
+        pressure_pa: { type: number }
+        tau: { type: [number, "null"] }
+        wind_ms: { type: [number, "null"] }
+        dose_rate_mSv_h: { type: number }
+        sky_fraction: { type: number }
+        shadowed: { type: boolean }
+        simulated_fields: { type: array, items: { type: string } }
+
+    SunCompassRequest:
+      type: object
+      required: [utc, approx_position, beta_deg]
+      properties:
+        utc: { type: string, format: date-time }
+        approx_position: { $ref: "#/components/schemas/GeoPoint" }
+        beta_deg: { type: number, description: "Angle from the facing direction to the sun, clockwise positive (or to the shadow when uses_shadow)" }
+        sigma_beta_deg: { type: number, minimum: 0, default: 3 }
+        uses_shadow: { type: boolean, default: false }
+        sigma_pos_m: { type: number, minimum: 0, default: 500 }
+
+    SunCompassResult:
+      type: object
+      required: [heading_deg, sigma_heading_deg, sun, warnings]
+      properties:
+        heading_deg: { type: number }
+        sigma_heading_deg: { type: number }
+        sun: { $ref: "#/components/schemas/SunState" }
+        warnings: { type: array, items: { type: string } }
+
+    BearingObservation:
+      type: object
+      required: [landmark, bearing_deg]
+      properties:
+        landmark: { $ref: "#/components/schemas/Waypoint" }
+        bearing_deg: { type: number, description: "Absolute azimuth when heading_known, otherwise relative to the body heading" }
+        sigma_deg: { type: number, minimum: 0.1, default: 2 }
+
+    ResectionRequest:
+      type: object
+      required: [site_id, observations, heading_known]
+      properties:
+        site_id: { type: string }
+        observations: { type: array, minItems: 2, maxItems: 10, items: { $ref: "#/components/schemas/BearingObservation" } }
+        heading_known: { type: boolean }
+        prior: { oneOf: [ { $ref: "#/components/schemas/GeoPoint" }, { type: "null" } ] }
+        prior_sigma_m: { type: [number, "null"] }
+
+    Ellipse:
+      type: object
+      required: [semi_major_m, semi_minor_m, angle_deg, p]
+      properties:
+        semi_major_m: { type: number }
+        semi_minor_m: { type: number }
+        angle_deg: { type: number, description: Azimuth of the major axis, clockwise from north }
+        p: { type: number }
+
+    LocalizeResult:
+      type: object
+      required: [position, xy, cov, ellipse, gdop, residuals_deg, converged, quality_flags]
+      properties:
+        position: { $ref: "#/components/schemas/GeoPoint" }
+        xy: { $ref: "#/components/schemas/XY" }
+        heading_deg: { type: [number, "null"] }
+        cov: { type: array, items: { type: array, items: { type: number } } }
+        ellipse: { $ref: "#/components/schemas/Ellipse" }
+        gdop: { type: number }
+        residuals_deg: { type: array, items: { type: number } }
+        iterations: { type: integer }
+        converged: { type: boolean }
+        quality_flags: { type: array, items: { type: string } }
+
+    SkylineRequest:
+      type: object
+      required: [site_id, observed_profile_deg, azimuth_step_deg]
+      properties:
+        site_id: { type: string }
+        observed_profile_deg: { type: array, minItems: 8, items: { type: number }, description: Horizon elevation angles, equally spaced in azimuth relative to the camera }
+        azimuth_step_deg: { type: number, minimum: 0.1, maximum: 10 }
+        fov_deg: { type: number, minimum: 10, maximum: 360, default: 360 }
+        prior: { oneOf: [ { $ref: "#/components/schemas/GeoPoint" }, { type: "null" } ] }
+        search_radius_m: { type: number, minimum: 50, maximum: 20000, default: 2000 }
+
+    SkylineResult:
+      type: object
+      required: [best, candidates]
+      properties:
+        best: { $ref: "#/components/schemas/LocalizeResult" }
+        candidates: { type: array, items: { type: object, properties: { position: { $ref: "#/components/schemas/GeoPoint" }, heading_deg: { type: number }, score: { type: number } } } }
+        likelihood_cog_url: { type: [string, "null"] }
+
+    Alert:
+      type: object
+      required: [id, kind, severity, start, source, message, mode]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [SEP, CME, EVA_LIMIT, DATA_QUALITY, DUST] }
+        severity: { type: string, enum: [info, warning, critical] }
+        start: { type: string, format: date-time }
+        end: { type: [string, "null"], format: date-time }
+        source: { type: string }
+        message: { type: string }
+        mode: { $ref: "#/components/schemas/AlertMode" }
+        link: { type: [string, "null"] }
+
+    OrbitalElements:
+      type: object
+      required: [a_m, e, i_deg, raan_deg, argp_deg, M0_deg, epoch_utc]
+      properties:
+        a_m: { type: number }
+        e: { type: number, minimum: 0, exclusiveMaximum: 1 }
+        i_deg: { type: number }
+        raan_deg: { type: number }
+        argp_deg: { type: number }
+        M0_deg: { type: number }
+        epoch_utc: { type: string, format: date-time }
+
+    Orbiter:
+      type: object
+      required: [id, name, agency, status, elements, accuracy, source, credit, relay_capable]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        agency: { type: string }
+        status: { type: string, enum: [active, inactive, unknown] }
+        elements: { $ref: "#/components/schemas/OrbitalElements" }
+        accuracy: { $ref: "#/components/schemas/Accuracy" }
+        source: { type: string }
+        credit: { type: string }
+        relay_capable: { type: boolean }
+
+    OrbiterState:
+      type: object
+      required: [id, utc, lat, lon, alt_m, xyz_bodyfixed_m, accuracy]
+      properties:
+        id: { type: string }
+        utc: { type: string, format: date-time }
+        lat: { type: number }
+        lon: { type: number }
+        alt_m: { type: number }
+        xyz_bodyfixed_m: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        accuracy: { $ref: "#/components/schemas/Accuracy" }
+
+    ContactWindow:
+      type: object
+      required: [orbiter_id, aos_utc, los_utc, duration_s, max_elevation_deg, terrain_masked, accuracy]
+      properties:
+        orbiter_id: { type: string }
+        aos_utc: { type: string, format: date-time }
+        los_utc: { type: string, format: date-time }
+        duration_s: { type: number }
+        max_elevation_deg: { type: number }
+        terrain_masked: { type: boolean, description: True when the terrain horizon shortened or removed part of the geometric pass }
+        accuracy: { $ref: "#/components/schemas/Accuracy" }
+
+    LightTime:
+      type: object
+      required: [utc, distance_m, one_way_s, accuracy]
+      properties:
+        utc: { type: string, format: date-time }
+        distance_m: { type: number }
+        one_way_s: { type: number }
+        accuracy: { $ref: "#/components/schemas/Accuracy" }
