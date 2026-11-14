@@ -101,7 +101,8 @@ def test_back_to_base_and_off_route(client):
                                                     "base": {"lat": float(base[0]), "lon": float(base[1])}, "start_utc": UTC}).json()
     assert 0 <= r["bearing_deg"] < 360 and r["distance_m"] >= r["straight_distance_m"] - 1e-6
     p_lat, p_lon = aoi_to_geo(50.0, 0.0)
-    o = client.post(f"{B}/route/off-route", json={"route_xy": [[0, 0], [100, 0], [100, 100]], "position": {"lat": float(p_lat), "lon": float(p_lon)}}).json()
+    payload = {"route_xy": [[0, 0], [100, 0], [100, 100]], "position": {"lat": float(p_lat), "lon": float(p_lon)}}
+    o = client.post(f"{B}/route/off-route", json=payload).json()
     assert o["distance_m"] == pytest.approx(0.0, abs=0.01) and o["progress_m"] == pytest.approx(50.0, abs=0.01) and o["reroute"] is False
 
 
