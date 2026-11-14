@@ -46,3 +46,114 @@ products:
   simulated: false
   notes: Keplerian orbital elements for active Mars relay and science orbiters in
     Mars equator-of-date frame.
+- id: mars.landing_sites
+  family: geography
+  product_id: Mars_Landing_Sites_Gazetteer
+  source_url: https://planetarynames.wr.usgs.gov/
+  retrieved_at: '2026-11-14T09:18:28Z'
+  resolution_m: 0.0
+  license: public domain (USGS / NASA)
+  credit: USGS Gazetteer of Planetary Nomenclature / NASA / CNSA
+  level: L0
+  simulated: false
+  notes: Verified Mars landing site coordinates in planetocentric east-positive coordinate
+    system.
+- id: gale.places
+  family: places
+  product_id: Gale_Measured_Places_v2
+  source_url: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
+  retrieved_at: '2026-11-14T09:18:28Z'
+  resolution_m: 0.0
+  license: NASA public domain
+  credit: NASA/JPL-Caltech (Mars Science Laboratory, MMGIS traverse waypoints)
+  level: L0
+  simulated: false
+  notes: Catalog of 13 Gale crater landmarks derived strictly from NASA MMGIS waypoints.
+- id: gale.pov
+  family: optical
+  product_id: MSL_MASTCAM_POV_SET
+  source_url: https://mars.nasa.gov/msl/multimedia/raw-images/
+  retrieved_at: '2026-11-14T09:18:29Z'
+  resolution_m: 0.01
+  license: Public Domain (NASA / JPL-Caltech)
+  credit: NASA/JPL-Caltech / MSSS
+  level: L3
+  simulated: false
+  notes: Curated set of 10 Curiosity Mastcam surface POV images with exact positions
+    from MMGIS traverse waypoints (D-13).
+- id: usgs.msl_gale_dem_1m_v3
+  family: topography
+  product_id: MSL_Gale_DEM_Mosaic_1m_v3
+  source_url: https://planetarymaps.usgs.gov/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif
+  retrieved_at: '2026-11-14T09:24:11Z'
+  resolution_m: 1.0
+  license: public domain (USGS/NASA) [verify]
+  credit: NASA/JPL/University of Arizona (HiRISE), NASA/JPL/MSSS (CTX); USGS Astrogeology
+    MSL Gale merged DEM v3
+  level: L2/L3
+  simulated: false
+  notes: AOI window read via HTTP range requests, area-averaged 1 m -> 10 m, reprojected
+    to the AOI grid at 10 m (L3) and 20 m (L2).
+- id: usgs.msl_gale_ortho_25cm_v3
+  family: optical
+  product_id: MSL_Gale_Orthophoto_Mosaic_25cm_v3
+  source_url: https://planetarymaps.usgs.gov/mosaic/Mars/MSL/MSL_Gale_Orthophoto_Mosaic_25cm_v3.tif
+  retrieved_at: '2026-11-14T09:52:02Z'
+  resolution_m: 0.25
+  license: public domain (USGS/NASA)
+  credit: NASA/JPL/University of Arizona (HiRISE), NASA/JPL/MSSS (CTX); USGS Astrogeology
+    MSL Gale Orthophoto Mosaic 25cm v3
+  level: L3
+  simulated: false
+  notes: 'Primary exploration corridor read via HTTP range requests and resampled
+    to 2 m AOI grid (L3). Valid fraction: 0.0013.'
+- id: usgs.viking_mdim21_color_232m
+  family: optical
+  product_id: Mars_Viking_MDIM21_ClrMosaic_global_232m
+  source_url: https://planetarymaps.usgs.gov/mosaic/Mars_Viking_MDIM21_ClrMosaic_global_232m.tif
+  retrieved_at: '2026-11-14T09:53:00Z'
+  resolution_m: 232.0
+  license: public domain (USGS/NASA) [verify]
+  credit: 'NASA/JPL/USGS Astrogeology: Viking MDIM 2.1 colourised mosaic'
+  level: globe
+  simulated: false
+  notes: Globe texture 4096x2048 JPEG sampled from the global mosaic (USGS 1 km overview
+    download).
+- id: nasa.curiosity_3d_model
+  family: model
+  product_id: 24584_Curiosity_static.glb
+  source_url: https://science.nasa.gov/resource/curiosity-rover-3d-model/
+  retrieved_at: '2026-11-14T09:57:20Z'
+  license: 'NASA media usage guidelines: not copyrighted, credit NASA/JPL-Caltech
+    [verify]'
+  credit: NASA/JPL-Caltech
+  level: model
+  simulated: false
+  notes: Official static glTF binary, 11.86 MB, 51 305 triangles, 9 embedded textures,
+    extent 2.78 x 2.22 x 3.95 m. Used by the first-person and 3D views.
+- id: marsnav.gale.L2.walkability
+  family: terrain
+  product_id: walkability-L2
+  source_url: null
+  retrieved_at: '2026-11-14T09:57:30Z'
+  resolution_m: 20.0
+  license: derived (public-domain inputs)
+  credit: NASA/JPL/University of Arizona (HiRISE), NASA/JPL/MSSS (CTX); USGS Astrogeology
+    MSL Gale merged DEM v3
+  level: L2
+  simulated: false
+  notes: Derived index F54 from the elevation DEM (slope, roughness, obstacle density,
+    data certainty); see docs/MATH.md.
+- id: marsnav.gale.L3.walkability
+  family: terrain
+  product_id: walkability-L3
+  source_url: null
+  retrieved_at: '2026-11-14T09:57:33Z'
+  resolution_m: 10.0
+  license: derived (public-domain inputs)
+  credit: NASA/JPL/University of Arizona (HiRISE), NASA/JPL/MSSS (CTX); USGS Astrogeology
+    MSL Gale merged DEM v3
+  level: L3
+  simulated: false
+  notes: Derived index F54 from the elevation DEM (slope, roughness, obstacle density,
+    data certainty); see docs/MATH.md.
