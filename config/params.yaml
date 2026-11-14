@@ -20,6 +20,13 @@ atmosphere:
   P_ref:             { value: 750.0,   unit: Pa,  source: "ASSUMPTION: typical REMS pressure at Gale", verify: true, range: [700, 900] }
   tau_default:       { value: 0.5,     unit: "1", source: "ASSUMPTION: dust optical depth, clear season", verify: true, range: [0.3, 1.0] }
 
+env:
+  T_surf_day_default_K:   { value: 270.0, unit: K,   source: "ASSUMPTION: typical Gale daytime ground temperature (REMS order)", verify: true, range: [250, 290] }
+  T_surf_night_default_K: { value: 190.0, unit: K,   source: "ASSUMPTION: typical Gale night ground temperature (REMS order)", verify: true, range: [175, 205] }
+  T_air_default_K:        { value: 215.0, unit: K,   source: "ASSUMPTION: diurnal mean air temperature", verify: true }
+  T_air_diurnal_amp_K:    { value: 35.0,  unit: K,   source: "ASSUMPTION" }
+  wind_default_ms:        { value: 5.0,   unit: m/s, source: "ASSUMPTION" }
+
 radiation:
   dose_eq_ref:        { value: 0.64, unit: mSv/day, source: "Hassler et al. 2014, Science (RAD, Gale)", verify: true, range: [0.52, 0.76] }
   dose_abs_ref:       { value: 0.21, unit: mGy/day, source: "Hassler et al. 2014, Science (RAD, Gale)", verify: true }
