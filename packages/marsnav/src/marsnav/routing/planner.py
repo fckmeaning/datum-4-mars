@@ -21,7 +21,7 @@ from marsnav.routing.cost import Astronaut, CellLayers, build_layers, pack_param
 from marsnav.routing.grid import SiteGrid
 from marsnav.routing.mobility import o2_use
 from marsnav.routing.returnfield import eva_margin, return_field
-from marsnav.sun import parse_utc
+from marsnav.sun import parse_utc, sun_position
 
 ASSUMPTIONS = [
     "Environment (sun, shadows, temperature) is evaluated at the departure time for the whole route (P1: arrival time).",
@@ -30,6 +30,41 @@ ASSUMPTIONS = [
     "Dose: RAD open-sky reference scaled by terrain sky fraction and pressure (ASSUMPTION beta).",
     "Hazards smaller than the grid resolution are not resolved.",
 ]
+
+
+def sunset_in_s(lat: float, lon: float, utc: str) -> float | None:
+    """Seconds from ``utc`` until the sun drops below the horizon at the site (0 if already down; None if it stays up for 24 h)."""
+    step = int(param("verdict.sunset_search_step_s"))
+    t0 = parse_utc(utc)
+    for k in range(0, 86400 // step + 1):
+        if sun_position(lat, lon, t0 + timedelta(seconds=k * step)).elevation_deg <= 0.0:
+            return float(k * step)
+    return None
+
+
+def route_verdict(totals: dict, violations: list[dict], astro: Astronaut) -> dict:
+    """READY / CAUTION / NO_GO call with plain-English reasons.
+
+    NO_GO: any hard violation (EVA time, oxygen, return reserve). CAUTION: thin return margin, steep sections, a walk that ends after
+    sunset, much of the route in shadow, or temperatures close to the suit limit. Thresholds are ASSUMPTIONS in params.yaml (verdict.*).
+    """
+    if violations:
+        return {"call": "NO_GO", "reasons": [v["message"] for v in violations]}
+    reasons: list[str] = []
+    m = totals.get("return_margin")
+    if m is not None and m < float(param("verdict.margin_caution")):
+        reasons.append(f"The return margin is only {m * 100:.0f}% of the EVA budget.")
+    if totals["max_slope_deg"] > float(param("verdict.slope_caution_deg")):
+        reasons.append(f"Steep sections up to {totals['max_slope_deg']:.0f} degrees.")
+    sun_s = totals.get("sunset_in_s")
+    if sun_s is not None and totals["time_s"] > sun_s:
+        reasons.append(f"The walk ends {(totals['time_s'] - sun_s) / 60:.0f} min after sunset.")
+    if (totals.get("shadow_fraction") or 0.0) > float(param("verdict.shadow_caution_frac")):
+        reasons.append(f"{(totals['shadow_fraction'] or 0) * 100:.0f}% of the route is in shadow (cold, low light).")
+    t_min = totals.get("min_temp_K")
+    if t_min is not None and t_min < astro.T_min_K + float(param("verdict.temp_caution_margin_K")):
+        reasons.append(f"The surface cools to {t_min:.0f} K, close to the suit limit of {astro.T_min_K:.0f} K.")
+    return {"call": "CAUTION" if reasons else "READY", "reasons": reasons}
 
 
 def douglas_peucker(xy: np.ndarray, tol: float) -> np.ndarray:
@@ -209,6 +244,23 @@ def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str
         violations.append({"kind": "RETURN_RESERVE", "at_index": int(k), "message": (
             f"{d_cum[k] / 1000:.1f} km into the route the remaining {what} no longer covers the way back to base with the "
             f"{astro.reserve_fraction * 100:.0f}% reserve. Turn around earlier or shorten the traverse.")})
+    # Watney-style check extras: shelter time, turn-back point, oxygen-out point, daylight, verdict.
+    shelter_s = turnback_m = None
+    if ret is not None:
+        rt = layers.cache[key]["time_s"][rr, cc]
+        shelter_s = float(np.max(rt[np.isfinite(rt)])) if np.isfinite(rt).any() else None
+        fv = ret["first_violation"]
+        turnback_m = float(d_cum[max(fv - 1, 0)]) if fv is not None else None
+    cum_e = np.concatenate([[0.0], np.cumsum(terms[:, 2])])
+    depleted = np.flatnonzero(o2_use(cum_e, t_cum, astro.mass_astronaut) >= astro.o2_capacity_l)
+    lat0, lon0 = grid.center_latlon()
+    totals.update({
+        "shelter_time_s": shelter_s, "turnback_distance_m": turnback_m,
+        "o2_depleted_at_m": float(d_cum[depleted[0]]) if depleted.size else None,
+        "o2_depleted_at_s": float(t_cum[depleted[0]]) if depleted.size else None,
+        "sunset_in_s": sunset_in_s(lat0, lon0, utc),
+    })
+    verdict = route_verdict(totals, violations, astro)
     keep = douglas_peucker(np.column_stack([xs, ys]), 0.5 * grid.cell)
     coords = [[float(lon_all[k]), float(lat_all[k]), float(zs[k])] for k in keep]
     result = {
@@ -222,6 +274,7 @@ def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str
         "totals": totals,
         "segments": segments,
         "feasibility": {"ok": not violations, "violations": violations},
+        "verdict": verdict,
         "uncertainty": None,
         "assumptions": ASSUMPTIONS,
         "data_levels": [grid.level],

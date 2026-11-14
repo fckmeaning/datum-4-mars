@@ -161,7 +161,6 @@ def health() -> dict:
 @app.get(API + "/sources")
 def list_sources() -> list[dict]:
     import yaml
-
     from marsnav.config import repo_root
 
     f = repo_root() / "data" / "manifest.yaml"
@@ -466,8 +465,18 @@ def environment(site_id: str, lat: float = Query(ge=-90, le=90), lon: float = Qu
 
 # ---------------------------------------------------------------- alerts & orbits (minimal until later tickets)
 @app.get(API + "/alerts/space-weather")
-def space_weather(mode: Literal["live", "replay", "simulated"] | None = None) -> list[dict]:
-    return []
+def space_weather(mode: Literal["live", "replay", "simulated"] | None = None, from_: str | None = Query(None, alias="from"),
+                  to: str | None = None) -> list[dict]:
+    from marsnav.sun import parse_utc
+
+    from . import spaceweather
+
+    try:
+        start = parse_utc(from_) if from_ else None
+        end = parse_utc(to) if to else None
+    except ValueError:
+        raise err(400, "INVALID_TIME", "from/to must be ISO 8601 timestamps.") from None
+    return spaceweather.alerts(mode or "live", start, end)
 
 
 def _orbiter_list() -> list[dict]:

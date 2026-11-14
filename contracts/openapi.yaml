@@ -618,6 +618,18 @@ components:
         science_score: { type: [number, "null"] }
         return_margin: { type: [number, "null"], description: Minimum remaining-resource margin along the route (P1) }
         risk: { type: number, description: Normalised risk used for SAFEST and the Pareto front }
+        shelter_time_s: { type: [number, "null"], description: Longest fastest-walk time back to base from any point of the route (storm-shelter time) }
+        turnback_distance_m: { type: [number, "null"], description: Distance along the route of the last point from which the crew can still return with the reserve intact; null when no such limit is hit }
+        o2_depleted_at_m: { type: [number, "null"], description: Distance along the route where the oxygen supply would run out; null when it lasts }
+        o2_depleted_at_s: { type: [number, "null"], description: Elapsed time when the oxygen supply would run out; null when it lasts }
+        sunset_in_s: { type: [number, "null"], description: Seconds from the start until the sun sets at the site (0 if already down, null if it stays up 24 h) }
+
+    Verdict:
+      type: object
+      required: [call, reasons]
+      properties:
+        call: { type: string, enum: [READY, CAUTION, NO_GO] }
+        reasons: { type: array, items: { type: string }, description: Plain-English reasons; empty for READY }
 
     Violation:
       type: object
@@ -664,6 +676,7 @@ components:
         totals: { $ref: "#/components/schemas/Totals" }
         segments: { type: array, items: { $ref: "#/components/schemas/Segment" } }
         feasibility: { $ref: "#/components/schemas/Feasibility" }
+        verdict: { $ref: "#/components/schemas/Verdict" }
         uncertainty: { oneOf: [ { $ref: "#/components/schemas/Quantiles" }, { type: "null" } ] }
         assumptions: { type: array, items: { type: string } }
         data_levels: { type: array, items: { $ref: "#/components/schemas/DataLevel" } }

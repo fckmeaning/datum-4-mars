@@ -23,18 +23,6 @@ products:
   level: L0
   simulated: true
   notes: Deterministic synthetic DEM at 20 m on the Gale AOI transverse-Mercator grid.
-- id: orbiters.elements
-  family: orbits
-  product_id: Mars_Active_Orbiters_Ephemerides
-  source_url: https://ssd.jpl.nasa.gov/api/horizons.api
-  retrieved_at: '2026-11-14T08:34:19Z'
-  resolution_m: 0.0
-  license: public domain (NASA/JPL, ESA)
-  credit: NASA/JPL Horizons, ESA Space Operations, MAVEN Science Team
-  level: L0
-  simulated: false
-  notes: Keplerian orbital elements for active Mars relay and science orbiters in
-    Mars equator-of-date frame.
 - id: nasa.msl_mmgis_waypoints
   family: geology
   product_id: MSL_waypoints.json + MSL_waypoints_current.json
@@ -46,3 +34,15 @@ products:
   level: '-'
   simulated: false
   notes: 1389 measured rover positions, sol 3-5073; source of places.json and traverse.geojson.
+- id: orbiters.elements
+  family: orbits
+  product_id: Mars_Active_Orbiters_Ephemerides
+  source_url: https://ssd.jpl.nasa.gov/api/horizons.api
+  retrieved_at: '2026-11-14T08:53:41Z'
+  resolution_m: 0.0
+  license: public domain (NASA/JPL, ESA)
+  credit: NASA/JPL Horizons, ESA Space Operations, MAVEN Science Team
+  level: L0
+  simulated: false
+  notes: Keplerian orbital elements for active Mars relay and science orbiters in
+    Mars equator-of-date frame.

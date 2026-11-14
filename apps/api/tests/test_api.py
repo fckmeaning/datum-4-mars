@@ -121,6 +121,42 @@ def test_back_to_base_and_off_route(client):
     assert o["distance_m"] == pytest.approx(0.0, abs=0.01) and o["progress_m"] == pytest.approx(50.0, abs=0.01) and o["reroute"] is False
 
 
+def test_route_verdict_and_watney_fields(client):
+    body = {"site_id": "gale", "start_utc": UTC, "waypoints": [wp(*CENTER, "start"), wp(-4.705, 137.41, "goal")]}
+    r = client.post(f"{B}/route", json={**body, "profile": "SAFEST"}).json()
+    assert r["verdict"]["call"] in ("READY", "CAUTION", "NO_GO") and isinstance(r["verdict"]["reasons"], list)
+    for key in ("shelter_time_s", "turnback_distance_m", "o2_depleted_at_m", "o2_depleted_at_s", "sunset_in_s"):
+        assert key in r["totals"]
+    assert r["totals"]["sunset_in_s"] is None or r["totals"]["sunset_in_s"] >= 0
+    short = client.post(f"{B}/route", json={**body, "astronaut": {"eva_max_s": 600}}).json()
+    assert short["verdict"]["call"] == "NO_GO" and short["verdict"]["reasons"]
+
+
+def test_space_weather_alerts_with_stubbed_donki(client, monkeypatch):
+    from app import spaceweather
+
+    sim = {"simulationID": "S1", "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/WSA-ENLIL/1/-1",
+           "cmeInputs": [{"speed": 600.0}],
+           "impactList": [{"location": "Mars", "arrivalTime": "2026-11-13T12:00Z", "isGlancingBlow": True, "isMinorImpact": False},
+                          {"location": "Earth", "arrivalTime": "2026-11-12T12:00Z"}]}
+    monkeypatch.setattr(spaceweather, "fetch_simulations", lambda s, e: [sim])
+    live = client.get(f"{B}/alerts/space-weather", params={"mode": "live", "from": "2026-10-15T00:00:00Z", "to": "2026-11-14T00:00:00Z"}).json()
+    assert len(live) == 1 and live[0]["kind"] == "CME" and live[0]["mode"] == "live" and "glancing" in live[0]["message"]
+    assert live[0]["link"].startswith("https://ccmc.gsfc.nasa.gov/")
+    assert client.get(f"{B}/alerts/space-weather", params={"mode": "replay"}).json()[0]["mode"] == "replay"
+    drill = client.get(f"{B}/alerts/space-weather", params={"mode": "simulated"}).json()[0]
+    assert drill["kind"] == "SEP" and drill["mode"] == "simulated" and "SIMULATED" in drill["message"]
+
+    import httpx
+
+    def boom(s, e):
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(spaceweather, "fetch_simulations", boom)
+    off = client.get(f"{B}/alerts/space-weather", params={"mode": "live"}).json()
+    assert off[0]["kind"] == "DATA_QUALITY" and "not checked" in off[0]["message"]
+
+
 def test_sources_list_has_credit_for_every_product(client):
     items = client.get(f"{B}/sources").json()
     assert isinstance(items, list)

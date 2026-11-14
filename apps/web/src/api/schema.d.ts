@@ -740,6 +740,22 @@ export interface components {
             return_margin?: number | null;
             /** @description Normalised risk used for SAFEST and the Pareto front */
             risk?: number;
+            /** @description Longest fastest-walk time back to base from any point of the route (storm-shelter time) */
+            shelter_time_s?: number | null;
+            /** @description Distance along the route of the last point from which the crew can still return with the reserve intact; null when no such limit is hit */
+            turnback_distance_m?: number | null;
+            /** @description Distance along the route where the oxygen supply would run out; null when it lasts */
+            o2_depleted_at_m?: number | null;
+            /** @description Elapsed time when the oxygen supply would run out; null when it lasts */
+            o2_depleted_at_s?: number | null;
+            /** @description Seconds from the start until the sun sets at the site (0 if already down */
+            sunset_in_s?: number | null;
+        };
+        Verdict: {
+            /** @enum {string} */
+            call: "READY" | "CAUTION" | "NO_GO";
+            /** @description Plain-English reasons; empty for READY */
+            reasons: string[];
         };
         Violation: {
             kind: string;
@@ -774,6 +790,7 @@ export interface components {
             totals: components["schemas"]["Totals"];
             segments: components["schemas"]["Segment"][];
             feasibility: components["schemas"]["Feasibility"];
+            verdict?: components["schemas"]["Verdict"];
             uncertainty?: components["schemas"]["Quantiles"] | null;
             assumptions: string[];
             data_levels: components["schemas"]["DataLevel"][];
