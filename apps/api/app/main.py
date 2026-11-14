@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import difflib
+import os
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Literal
 
 import marsnav
@@ -13,7 +15,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from marsnav.config import param
+from marsnav.config import param, repo_root
 from marsnav.env import (
     SIMULATED_FIELDS,
     atmosphere,
@@ -32,13 +34,15 @@ from marsnav.routing.planner import (
 from marsnav.sun import incidence, irradiance, mars24, sun_position
 from marsnav.terrain import horizon_profile, sky_fraction
 from pydantic import BaseModel, Field, model_validator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import sites
 
 API = "/api/v1"
 app = FastAPI(title="marsnav API", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"],
-                   allow_methods=["*"], allow_headers=["*"])
+_CORS = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"]
+_CORS += [o.strip() for o in os.environ.get("MARSNAV_CORS_ORIGINS", "").split(",") if o.strip()]  # extra origins, comma-separated
+app.add_middleware(CORSMiddleware, allow_origins=_CORS, allow_methods=["*"], allow_headers=["*"])
 app.mount("/data", StaticFiles(directory=str(sites.data_root()), check_dir=False), name="data")
 
 
@@ -624,3 +628,27 @@ def resection_ep(req: ResectionRequest) -> dict:
 @app.post(API + "/localize/skyline")
 def skyline(_: dict) -> dict:
     raise _not_yet("Skyline matching")
+
+
+# ---------------------------------------------------------------- built web app (single-origin hosting)
+class SPAStaticFiles(StaticFiles):
+    """Serves the built web app; unknown non-API paths fall back to index.html so client-side routes (/planner, /globe) reload."""
+
+    async def get_response(self, path: str, scope):  # type: ignore[no-untyped-def]
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            # Starlette normalises `path` with os.sep, so on Windows it is "api\\v1\\x": compare in POSIX form
+            if exc.status_code == 404 and not path.replace("\\", "/").startswith(("api/", "data/")):
+                return await super().get_response("index.html", scope)
+            raise
+
+
+def _web_dist() -> Path | None:
+    env = os.environ.get("MARSNAV_WEB_DIST")
+    cand = Path(env) if env else repo_root() / "apps" / "web" / "dist"
+    return cand if (cand / "index.html").is_file() else None
+
+
+if (_dist := _web_dist()) is not None:  # must stay last: the "/" mount matches everything the routes above did not
+    app.mount("/", SPAStaticFiles(directory=str(_dist), html=True), name="web")
