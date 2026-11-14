@@ -20,6 +20,7 @@ from marsnav.routing.astar import NoPathError, path_terms, search
 from marsnav.routing.cost import Astronaut, CellLayers, build_layers, pack_params, resolve_weights
 from marsnav.routing.grid import SiteGrid
 from marsnav.routing.mobility import o2_use
+from marsnav.routing.returnfield import eva_margin, return_field
 from marsnav.sun import parse_utc
 
 ASSUMPTIONS = [
@@ -83,8 +84,12 @@ def _limiting_factor(seg_terms: dict[str, float], grade: float, dose_rate_mean: 
 
 def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str = "BALANCED", weights: dict | None = None,
                start_utc: str | None = None, astronaut: dict | None = None, return_to_start: bool = False,
-               optimize_order: bool = False, max_segments: int = 120, layers: CellLayers | None = None) -> dict:
-    """Plan a route through waypoint cells. Raises NoPathError when a leg is infeasible."""
+               optimize_order: bool = False, max_segments: int = 120, layers: CellLayers | None = None,
+               base_rc: tuple[int, int] | None = None, return_cells: bool = False) -> dict:
+    """Plan a route through waypoint cells. Raises NoPathError when a leg is infeasible.
+
+    With ``base_rc`` the F34 return field and F35 reserve check run and fill totals.return_margin (< 0 adds a RETURN_RESERVE violation).
+    """
     t0 = time.perf_counter()
     if len(waypoints_rc) < 2:
         raise ValueError("at least two waypoints are required")
@@ -170,6 +175,15 @@ def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str
     o2 = float(o2_use(total_energy, total_time, astro.mass_astronaut))
     grades = np.abs(dz) / np.maximum(d_edges, 1e-9)
     shadow_frac = float(np.sum(d_edges * layers.shadow[rr[1:], cc[1:]]) / max(d_edges.sum(), 1e-9))
+    ret_margin, ret = None, None
+    d_cum = np.concatenate([[0.0], np.cumsum(d_edges)])
+    if base_rc is not None and grid.inside(*base_rc):
+        key = ("ret", tuple(base_rc), astro.v_flat, astro.m_tot)
+        if key not in layers.cache:
+            layers.cache[key] = return_field(arr, grid.cell, pack_params(resolve_weights("FASTEST"), astro), tuple(base_rc))
+        e_cum = np.concatenate([[0.0], np.cumsum(terms[:, 2])])
+        ret = eva_margin(layers.cache[key], rr, cc, t_cum, e_cum, astro)
+        ret_margin = ret["margin"]
     totals = {
         "time_s": total_time, "length_m": float(d_edges.sum()),
         "ascent_m": float(np.clip(dz, 0, None).sum()), "descent_m": float(np.clip(-dz, 0, None).sum()),
@@ -177,7 +191,7 @@ def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str
         "dose_mSv": total_dose, "energy_kJ": total_energy / 1000.0, "o2_l": o2,
         "min_temp_K": float(np.min(layers.temp_K[rr, cc])), "shadow_fraction": shadow_frac,
         "science_score": float(np.mean(arr["sci"][rr, cc])),
-        "return_margin": None,
+        "return_margin": ret_margin,
         "risk": total_dose / refs[2] + total_hz / refs[3],
     }
     violations = []
@@ -189,9 +203,15 @@ def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str
         violations.append({"kind": "O2", "message": f"Needs {o2:.0f} L O2, above the usable {usable_o2:.0f} L "
                            "(capacity minus reserve).", "at_index": None})
 
+    if ret is not None and ret["first_violation"] is not None:
+        k = ret["first_violation"]
+        what = "oxygen" if ret["limiting"] == "oxygen" else "time"
+        violations.append({"kind": "RETURN_RESERVE", "at_index": int(k), "message": (
+            f"{d_cum[k] / 1000:.1f} km into the route the remaining {what} no longer covers the way back to base with the "
+            f"{astro.reserve_fraction * 100:.0f}% reserve. Turn around earlier or shorten the traverse.")})
     keep = douglas_peucker(np.column_stack([xs, ys]), 0.5 * grid.cell)
     coords = [[float(lon_all[k]), float(lat_all[k]), float(zs[k])] for k in keep]
-    return {
+    result = {
         "route_id": _route_id(grid.site_id, grid.level, profile, w, pts, utc),
         "site_id": grid.site_id,
         "profile": profile,
@@ -208,6 +228,61 @@ def plan_route(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profile: str
         "simulated_inputs": layers.simulated,
         "computed_ms": (time.perf_counter() - t0) * 1000.0,
     }
+    if return_cells:
+        result["cells"] = [[int(r), int(c)] for r, c in zip(rr, cc, strict=True)]
+    return result
+
+
+def non_dominated(routes: list[dict]) -> list[dict]:
+    """Routes not dominated in (time_s, risk) — both minimised — sorted by time."""
+    pts = [(r["totals"]["time_s"], r["totals"]["risk"]) for r in routes]
+    keep = []
+    for i, (t, k) in enumerate(pts):
+        dominated = any((t2 <= t and k2 <= k) and (t2 < t or k2 < k) for j, (t2, k2) in enumerate(pts) if j != i)
+        if not dominated:
+            keep.append(routes[i])
+    return sorted(keep, key=lambda r: r["totals"]["time_s"])
+
+
+def knee_point(front: list[dict]) -> int:
+    """F33 — index of the knee: the front point closest to the utopia point (t_min, risk_min) in normalised coordinates."""
+    if len(front) <= 2:
+        return 0 if len(front) == 1 else 0
+    t = np.array([r["totals"]["time_s"] for r in front])
+    k = np.array([r["totals"]["risk"] for r in front])
+    tn = (t - t.min()) / max(np.ptp(t), 1e-12)
+    kn = (k - k.min()) / max(np.ptp(k), 1e-12)
+    return int(np.argmin(np.hypot(tn, kn)))
+
+
+def pareto_routes(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], n_points: int = 7, start_utc: str | None = None,
+                  astronaut: dict | None = None, **kw) -> dict:
+    """F32 + F33 — non-dominated routes on the time-vs-risk front by sweeping the weights from pure time to pure safety.
+
+    Returns {routes, front, knee_route_id}; the first route is labelled FASTEST, the last SAFEST, the knee BALANCED.
+    """
+    utc = start_utc or datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    layers = build_layers(grid, utc, Astronaut.from_api(astronaut))
+    sweep = max(2 * n_points + 1, 9)
+    seen, cands = set(), []
+    for lam in np.linspace(0.0, 1.0, sweep):
+        w = {"w_tau": 1.0 - lam, "w_E": 0.1, "w_D": 0.5 * lam, "w_H": 0.5 * lam, "alpha": 0.0}
+        r = plan_route(grid, waypoints_rc, "BALANCED", weights=w, start_utc=utc, astronaut=astronaut, layers=layers, **kw)
+        key = (round(r["totals"]["time_s"], 1), round(r["totals"]["risk"], 4))
+        if key not in seen:
+            seen.add(key)
+            cands.append(r)
+    front = non_dominated(cands)
+    if len(front) > n_points:
+        idx = np.unique(np.round(np.linspace(0, len(front) - 1, n_points)).astype(int))
+        front = [front[i] for i in idx]
+    knee = knee_point(front)
+    for i, r in enumerate(front):
+        r["profile"] = "FASTEST" if i == 0 and len(front) > 1 else "SAFEST" if i == len(front) - 1 and len(front) > 1 else "BALANCED"
+    if front:
+        front[knee]["profile"] = "BALANCED"
+    return {"routes": front, "front": [{"route_id": r["route_id"], "time_s": r["totals"]["time_s"], "risk": r["totals"]["risk"]} for r in front],
+            "knee_route_id": front[knee]["route_id"] if front else None}
 
 
 def alternatives(grid: SiteGrid, waypoints_rc: list[tuple[int, int]], profiles: list[str], **kw) -> dict:

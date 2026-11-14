@@ -120,6 +120,7 @@ class CellLayers:
     temp_K: NDArray
     shadow: NDArray
     simulated: list[str]
+    cache: dict = field(default_factory=dict)
 
 
 def build_layers(grid: SiteGrid, utc: str, astro: Astronaut) -> CellLayers:

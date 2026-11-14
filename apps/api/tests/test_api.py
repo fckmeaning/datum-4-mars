@@ -43,6 +43,21 @@ def test_route_and_alternatives_contract(client):
     assert by["SAFEST"]["totals"]["risk"] <= by["FASTEST"]["totals"]["risk"] + 1e-6
 
 
+def test_pareto_and_uncertainty_endpoints(client):
+    body = {"site_id": "gale", "start_utc": UTC, "waypoints": [wp(*CENTER, "start"), wp(-4.705, 137.41, "goal")]}
+    p = client.post(f"{B}/route/pareto", json={**body, "n_points": 5})
+    assert p.status_code == 200, p.text
+    res = p.json()
+    assert 1 <= len(res["routes"]) <= 5 and res["knee_route_id"] in {r["route_id"] for r in res["routes"]}
+    assert [f["time_s"] for f in res["front"]] == sorted(f["time_s"] for f in res["front"])
+    u = client.post(f"{B}/route/uncertainty", json={"route": body, "runs": 30, "seed": 7})
+    assert u.status_code == 200, u.text
+    q = u.json()["quantiles"]
+    for key in ("time_s", "dose_mSv", "energy_kJ", "o2_l"):
+        assert len(q[key]) == 3 and q[key][0] <= q[key][1] <= q[key][2]
+    assert client.post(f"{B}/route/uncertainty", json={"route": body, "runs": 5}).status_code == 422
+
+
 def test_route_errors_are_human_readable(client):
     far = {"site_id": "gale", "waypoints": [wp(*CENTER), wp(10.0, 10.0)]}
     r = client.post(f"{B}/route", json=far)

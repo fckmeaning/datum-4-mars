@@ -269,9 +269,19 @@ def search_places(q: str = Query(min_length=1, max_length=100), site_id: str | N
 
 
 # ---------------------------------------------------------------- routes
-def _plan_kwargs(req: RouteRequest) -> dict:
-    return {"start_utc": req.start_utc or now_iso(), "astronaut": req.astronaut, "return_to_start": req.return_to_start,
-            "optimize_order": req.optimize_order}
+def _base_rc(grid, site_id: str) -> tuple[int, int] | None:  # noqa: ANN001
+    """Base cell for the return-reserve check, or None when the base lies outside the loaded grid."""
+    b = sites.base_place(site_id)
+    rc = grid.latlon_to_rc(b["lat"], b["lon"])
+    return rc if grid.inside(*rc) else None
+
+
+def _plan_kwargs(req: RouteRequest, grid=None) -> dict:  # noqa: ANN001
+    kw = {"start_utc": req.start_utc or now_iso(), "astronaut": req.astronaut, "return_to_start": req.return_to_start,
+          "optimize_order": req.optimize_order}
+    if grid is not None:
+        kw["base_rc"] = _base_rc(grid, req.site_id)
+    return kw
 
 
 @app.post(API + "/route")
@@ -279,7 +289,7 @@ def route(req: RouteRequest) -> dict:
     grid = _grid(req.site_id, req.level)
     rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
     try:
-        return plan_route(grid, rcs, profile=req.profile, weights=req.weights, **_plan_kwargs(req))
+        return plan_route(grid, rcs, profile=req.profile, weights=req.weights, **_plan_kwargs(req, grid))
     except NoPathError as e:
         raise _no_route(e) from None
 
@@ -289,7 +299,7 @@ def route_alternatives(req: AlternativesRequest) -> dict:
     grid = _grid(req.site_id, req.level)
     rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
     try:
-        return alternatives(grid, rcs, list(req.profiles), **_plan_kwargs(req))
+        return alternatives(grid, rcs, list(req.profiles), **_plan_kwargs(req, grid))
     except NoPathError as e:
         raise _no_route(e) from None
 
@@ -323,14 +333,47 @@ def _not_yet(name: str) -> HTTPException:
     return err(501, "NOT_IMPLEMENTED", f"{name} is a P1 feature that is not implemented yet.")
 
 
+class ParetoRequest(RouteRequest):
+    n_points: int = Field(7, ge=3, le=9)
+
+
 @app.post(API + "/route/pareto")
-def route_pareto(_: dict) -> dict:
-    raise _not_yet("Pareto routes")
+def route_pareto(req: ParetoRequest) -> dict:
+    from marsnav.routing.planner import pareto_routes
+
+    grid = _grid(req.site_id, req.level)
+    rcs = [_resolve_rc(req.site_id, grid, w) for w in req.waypoints]
+    kw = _plan_kwargs(req, grid)
+    kw.pop("optimize_order", None)
+    try:
+        return pareto_routes(grid, rcs, n_points=req.n_points, **kw)
+    except NoPathError as e:
+        raise _no_route(e) from None
+
+
+class UncertaintyRequest(BaseModel):
+    route: RouteRequest
+    runs: int = Field(100, ge=20, le=200)
+    seed: int = 42
 
 
 @app.post(API + "/route/uncertainty")
-def route_uncertainty(_: dict) -> dict:
-    raise _not_yet("Route uncertainty")
+def route_uncertainty_ep(req: UncertaintyRequest) -> dict:
+    from marsnav.routing.cost import Astronaut, build_layers
+    from marsnav.uncertainty import route_uncertainty
+
+    r = req.route
+    grid = _grid(r.site_id, r.level)
+    rcs = [_resolve_rc(r.site_id, grid, w) for w in r.waypoints]
+    kw = _plan_kwargs(r, grid)
+    try:
+        layers = build_layers(grid, kw["start_utc"], Astronaut.from_api(r.astronaut))
+        planned = plan_route(grid, rcs, profile=r.profile, weights=r.weights, layers=layers, return_cells=True, **kw)
+    except NoPathError as e:
+        raise _no_route(e) from None
+    mc = route_uncertainty(grid, layers, [tuple(c) for c in planned["cells"]], r.profile, r.astronaut, req.runs, req.seed)
+    return {"route_id": planned["route_id"], "quantiles": mc["quantiles"], "runs": mc["runs"], "seed": mc["seed"],
+            "varied_parameters": mc["varied_parameters"]}
 
 
 class OffRouteRequest(BaseModel):
