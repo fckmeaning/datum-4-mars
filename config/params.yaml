@@ -69,6 +69,8 @@ hazard:
   w_sh:               { value: 0.3,   unit: "1", source: ASSUMPTION }
   w_th:               { value: 1.0,   unit: "1", source: ASSUMPTION }
   w_c:                { value: 0.5,   unit: "1", source: ASSUMPTION }
+  roughness_ref_m:    { value: 2.0,   unit: m,   source: "ASSUMPTION: roughness that halves walking speed when k_roughness = 1", range: [1.0, 4.0] }
+  thermal_scale_K:    { value: 20.0,  unit: K,   source: "ASSUMPTION: temperature excess that counts as 1 unit of thermal violation" }
 
 routing:
   connectivity:       { value: 16, unit: "1", source: "design" }
@@ -89,6 +91,7 @@ routing:
 terrain:
   roughness_window:   { value: 5,     unit: cells, source: design }
   horizon_azimuths:   { value: 72,    unit: "1",   source: "ASSUMPTION (performance)" }
+  sky_grid_azimuths:  { value: 36,    unit: "1",   source: "ASSUMPTION (performance, whole-grid sky fraction)" }
   r_near_m:           { value: 2000.0,  unit: m,   source: "ASSUMPTION (performance)" }
   r_far_m:            { value: 20000.0, unit: m,   source: "ASSUMPTION (performance)" }
 
