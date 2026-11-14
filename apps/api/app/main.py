@@ -7,20 +7,30 @@ import re
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+import marsnav
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, model_validator
-
-import marsnav
-from marsnav.env import SIMULATED_FIELDS, atmosphere, dose_rate, pressure, surface_temperature
+from marsnav.env import (
+    SIMULATED_FIELDS,
+    atmosphere,
+    dose_rate,
+    pressure,
+    surface_temperature,
+)
 from marsnav.geodesy import geo_to_aoi
 from marsnav.routing.astar import NoPathError
-from marsnav.routing.planner import alternatives, back_to_base, order_waypoints, plan_route
+from marsnav.routing.planner import (
+    alternatives,
+    back_to_base,
+    order_waypoints,
+    plan_route,
+)
 from marsnav.sun import incidence, irradiance, mars24, sun_position
 from marsnav.terrain import horizon_profile, sky_fraction
+from pydantic import BaseModel, Field, model_validator
 
 from . import sites
 
@@ -36,7 +46,7 @@ def err(status: int, code: str, message: str, **details: Any) -> HTTPException:
 
 
 @app.exception_handler(HTTPException)
-async def http_error(_, exc: HTTPException):  # noqa: ANN001
+async def http_error(_, exc: HTTPException):
     body = exc.detail if isinstance(exc.detail, dict) else {"code": "ERROR", "message": str(exc.detail)}
     return JSONResponse(status_code=exc.status_code, content=body)
 
@@ -56,7 +66,7 @@ class Waypoint(BaseModel):
     dwell_min: float = Field(0, ge=0, le=240)
 
     @model_validator(mode="after")
-    def one_location(self):  # noqa: ANN201
+    def one_location(self):
         if not (self.place_id or (self.lat is not None and self.lon is not None) or (self.x is not None and self.y is not None)):
             raise ValueError("a waypoint needs place_id, lat+lon, or x+y")
         return self
@@ -113,7 +123,7 @@ def _site_or_404(site_id: str) -> dict:
         raise err(404, "UNKNOWN_SITE", f"Site '{site_id}' does not exist. Use GET /sites.") from None
 
 
-def _resolve_rc(site_id: str, grid, wp: Waypoint) -> tuple[int, int]:  # noqa: ANN001
+def _resolve_rc(site_id: str, grid, wp: Waypoint) -> tuple[int, int]:
     if wp.place_id:
         match = next((p for p in sites.places(site_id) if p["id"] == wp.place_id), None)
         if not match:
@@ -128,7 +138,7 @@ def _resolve_rc(site_id: str, grid, wp: Waypoint) -> tuple[int, int]:  # noqa: A
     return rc
 
 
-def _grid(site_id: str, level: str | None):  # noqa: ANN202
+def _grid(site_id: str, level: str | None):
     _site_or_404(site_id)
     try:
         return sites.get_grid(site_id, level)
@@ -179,7 +189,7 @@ def layer_meta(layer_id: str) -> dict:
     raise err(404, "UNKNOWN_LAYER", f"Layer '{layer_id}' does not exist.")
 
 
-def _sample_grid(grid, rc) -> float | None:  # noqa: ANN001
+def _sample_grid(grid, rc) -> float | None:
     v = float(grid.z[rc])
     return v if np.isfinite(v) else None
 
@@ -212,7 +222,7 @@ def whats_here(site_id: str, lat: float = Query(ge=-90, le=90), lon: float = Que
     sun = sun_position(lat, lon, t)
     h = horizon_profile(grid.z, grid.cell, rc[0], rc[1], n_az=72, r_max=20000.0)
     sky = float(sky_fraction(h))
-    k = int(round(sun.azimuth_deg / 5.0)) % 72
+    k = round(sun.azimuth_deg / 5.0) % 72
     shadowed = bool(sun.elevation_deg <= 0 or np.radians(sun.elevation_deg) < h[k])
     slope, aspect = grid.slope_aspect
     cos_i = 0.0 if shadowed else float(incidence(slope[rc], aspect[rc], sun.elevation_deg, sun.azimuth_deg))
@@ -385,14 +395,75 @@ def light_time(utc: str = Query(...)) -> dict:
     raise _not_yet("Earth light time")
 
 
+class SunCompassRequest(BaseModel):
+    utc: str
+    approx_position: GeoPoint
+    beta_deg: float
+    sigma_beta_deg: float = Field(3.0, ge=0)
+    uses_shadow: bool = False
+    sigma_pos_m: float = Field(500.0, ge=0)
+
+
 @app.post(API + "/localize/sun-compass")
-def sun_compass(_: dict) -> dict:
-    raise _not_yet("Sun compass endpoint (math lands in the next CEO ticket)")
+def sun_compass_ep(req: SunCompassRequest) -> dict:
+    from marsnav.localize import sun_compass
+
+    p = req.approx_position
+    r = sun_compass(req.utc, p.lat, p.lon, req.beta_deg, req.sigma_beta_deg, req.uses_shadow, req.sigma_pos_m)
+    return {"heading_deg": r.heading_deg, "sigma_heading_deg": r.sigma_heading_deg, "sun": _sun_dict(p.lat, p.lon, req.utc),
+            "warnings": r.warnings}
+
+
+class BearingObservation(BaseModel):
+    landmark: Waypoint
+    bearing_deg: float
+    sigma_deg: float = Field(2.0, ge=0.1)
+
+
+class ResectionRequest(BaseModel):
+    site_id: str
+    observations: list[BearingObservation] = Field(min_length=2, max_length=10)
+    heading_known: bool
+    prior: GeoPoint | None = None
+    prior_sigma_m: float | None = None
 
 
 @app.post(API + "/localize/resection")
-def resection(_: dict) -> dict:
-    raise _not_yet("Resection endpoint (math lands in the next CEO ticket)")
+def resection_ep(req: ResectionRequest) -> dict:
+    from marsnav.geodesy import aoi_to_geo
+    from marsnav.localize import error_ellipse, resection
+
+    _site_or_404(req.site_id)
+    pts = []
+    for ob in req.observations:
+        lm = ob.landmark
+        if lm.place_id:
+            pl = next((p for p in sites.places(req.site_id) if p["id"] == lm.place_id), None)
+            if pl is None:
+                raise err(400, "UNKNOWN_PLACE", f"Landmark '{lm.place_id}' is not a known place.")
+            x, y = geo_to_aoi(pl["lat"], pl["lon"])
+        elif lm.lat is not None and lm.lon is not None:
+            x, y = geo_to_aoi(lm.lat, lm.lon)
+        else:
+            x, y = lm.x, lm.y
+        pts.append((float(x), float(y)))
+    L = np.array(pts)
+    prior = None
+    if req.prior:
+        px, py = geo_to_aoi(req.prior.lat, req.prior.lon)
+        prior = np.array([float(px), float(py)])
+    try:
+        r = resection(L, np.array([o.bearing_deg for o in req.observations]), np.array([o.sigma_deg for o in req.observations]),
+                      req.heading_known, prior)
+    except ValueError as e:
+        raise err(422, "UNSOLVABLE", f"{e}. Add landmarks or provide the heading from the sun compass.") from None
+    lat, lon = aoi_to_geo(r.x, r.y)
+    e = error_ellipse(r.cov)
+    return {"position": {"lat": float(lat), "lon": float(lon)}, "xy": {"x": r.x, "y": r.y}, "heading_deg": r.heading_deg,
+            "cov": np.asarray(r.cov).tolist(), "ellipse": {"semi_major_m": e.semi_major_m, "semi_minor_m": e.semi_minor_m,
+                                                           "angle_deg": e.angle_deg, "p": e.p},
+            "gdop": r.gdop if np.isfinite(r.gdop) else 1e9, "residuals_deg": np.asarray(r.residuals_deg).tolist(),
+            "iterations": r.iterations, "converged": r.converged, "quality_flags": r.flags}
 
 
 @app.post(API + "/localize/skyline")

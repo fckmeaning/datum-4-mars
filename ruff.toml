@@ -1,0 +1,11 @@
+# Root ruff config for apps/ and data/ (packages/marsnav has its own in pyproject.toml).
+line-length = 150
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY"]
+ignore = ["E741"]
+
+[lint.per-file-ignores]
+# FastAPI idiom: Query()/Depends() in argument defaults.
+"apps/api/**" = ["B008"]
