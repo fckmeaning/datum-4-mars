@@ -76,35 +76,33 @@ def test_rover_route_reports_walkback(client):
 
 def test_skyline_recovers_a_known_pose(client):
     grid = sites.get_grid("gale", "L1")
+    from marsnav.geodesy import geo_to_aoi
     from marsnav.terrain import horizon_profile
 
     r0, c0 = grid.latlon_to_rc(*CENTER)
     h = np.degrees(horizon_profile(np.where(np.isfinite(grid.z), grid.z, np.nanmin(grid.z)), grid.cell, r0, c0, n_az=72))
     if float(np.ptp(h)) < 0.5:
         pytest.skip("no horizon relief at the test point on this data level")
-    heading = 40.0  # the observer looks towards azimuth 40 deg: relative azimuth = absolute - heading
-    az_abs = np.arange(72) * 5.0
-    rel = ((az_abs - heading + 180.0) % 360.0) - 180.0
-    order = np.argsort(rel)
-    horizon = [{"az_rel_deg": float(rel[i]), "elev_deg": float(h[i])} for i in order]
-    res = client.post(f"{B}/localize/skyline", json={"site_id": "gale", "level": "L1", "horizon": horizon,
-                                                      "prior": {"lat": CENTER[0], "lon": CENTER[1]}, "radius_m": 3000})
+    heading = 40.0  # the observer looks towards azimuth 40 deg; the profile is given relative to the view direction
+    rel = -180.0 + np.arange(72) * 5.0
+    profile = [float(h[int(round(((heading + a) % 360.0) / 5.0)) % 72]) for a in rel]
+    res = client.post(f"{B}/localize/skyline", json={"site_id": "gale", "level": "L1", "observed_profile_deg": profile,
+                                                      "azimuth_step_deg": 5.0, "fov_deg": 360.0,
+                                                      "prior": {"lat": CENTER[0], "lon": CENTER[1]}, "search_radius_m": 3000})
     assert res.status_code == 200, res.text
     out = res.json()
-    assert set(out) >= {"position", "heading_deg", "confidence", "flags", "cov_xy"}
-    assert 0.0 <= out["confidence"] <= 1.0
-    assert out["candidates"] > 100
+    best = out["best"]
+    assert set(best) >= {"position", "xy", "heading_deg", "cov", "ellipse", "gdop", "quality_flags"}
+    assert 0.0 <= out["confidence"] <= 1.0 and out["searched"] > 100 and 1 <= len(out["candidates"]) <= 10
     # self-consistent best case (the observation comes from the same DEM): about 100 m on 200 m cells, heading within a degree
-    from marsnav.geodesy import geo_to_aoi
-
     x0, y0 = geo_to_aoi(*CENTER)
-    assert np.hypot(out["xy"]["x"] - x0, out["xy"]["y"] - y0) < 400.0
-    assert abs(((out["heading_deg"] - heading + 180.0) % 360.0) - 180.0) < 3.0
+    assert np.hypot(best["xy"]["x"] - x0, best["xy"]["y"] - y0) < 400.0
+    assert abs(((best["heading_deg"] - heading + 180.0) % 360.0) - 180.0) < 3.0
 
 
 def test_skyline_rejects_short_or_outside(client):
-    short = client.post(f"{B}/localize/skyline", json={"site_id": "gale", "horizon": [{"az_rel_deg": 0, "elev_deg": 1}]})
+    short = client.post(f"{B}/localize/skyline", json={"site_id": "gale", "observed_profile_deg": [1.0], "azimuth_step_deg": 5})
     assert short.status_code == 422
-    out = client.post(f"{B}/localize/skyline", json={"site_id": "gale", "prior": {"lat": 10.0, "lon": 10.0},
-                                                      "horizon": [{"az_rel_deg": float(a), "elev_deg": 2.0} for a in range(0, 360, 20)]})
+    out = client.post(f"{B}/localize/skyline", json={"site_id": "gale", "prior": {"lat": 10.0, "lon": 10.0}, "azimuth_step_deg": 10,
+                                                      "observed_profile_deg": [2.0] * 36})
     assert out.status_code == 400 and out.json()["code"] == "OUT_OF_AOI"

@@ -149,15 +149,13 @@ def test_fastapi_app_matches_contract(openapi_spec: dict[str, Any], repo_root: P
         pytest.skip(f"FastAPI app could not be imported: {exc}")
 
     # Build mapping of app routes: path -> set of lower-case HTTP methods
+    # app.openapi() lists every operation, including those of included routers (newer FastAPI keeps those as lazy
+    # `_IncludedRouter` objects that are invisible when iterating app.routes).
     app_routes: dict[str, set[str]] = {}
-    for route in app.routes:
-        route_path = getattr(route, "path", None)
-        methods = getattr(route, "methods", None)
-        if route_path and methods:
-            # Normalize methods (ignoring HEAD automatically added for GET by Starlette)
-            clean_methods = {m.lower() for m in methods if m.lower() != "head"}
-            if clean_methods:
-                app_routes.setdefault(route_path, set()).update(clean_methods)
+    for route_path, item in app.openapi().get("paths", {}).items():
+        clean_methods = {m.lower() for m in item if m.lower() in HTTP_METHODS}
+        if clean_methods:
+            app_routes.setdefault(route_path, set()).update(clean_methods)
 
     # Compare with contract paths
     contract_paths = openapi_spec.get("paths", {})

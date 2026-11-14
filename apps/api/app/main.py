@@ -729,26 +729,26 @@ def route_rover(req: RoverRouteRequest) -> dict:
         raise err(422, "BAD_ROVER_REQUEST", str(e)) from None
 
 
-class HorizonSample(BaseModel):
-    az_rel_deg: float = Field(ge=-360, le=360)
-    elev_deg: float = Field(ge=-10, le=90)
-
-
 class SkylineRequest(BaseModel):
+    """Contract SkylineRequest: horizon elevation angles equally spaced in azimuth relative to the camera (centre of the field of
+    view = 0 deg, first sample at -fov/2)."""
+
     site_id: str
-    horizon: list[HorizonSample] = Field(min_length=8, max_length=2000)
+    observed_profile_deg: list[float] = Field(min_length=8, max_length=4000)
+    azimuth_step_deg: float = Field(ge=0.1, le=10)
+    fov_deg: float = Field(360.0, ge=10, le=360)
     prior: GeoPoint | None = None
-    radius_m: float = Field(3000.0, ge=100, le=20000)
+    search_radius_m: float = Field(2000.0, ge=50, le=20000)
     level: Literal["L0", "L1", "L2", "L3"] | None = None
 
 
 @app.post(API + "/localize/skyline")
 def skyline(req: SkylineRequest) -> dict:
-    """F43 — position and heading from the observed horizon line (elevation angle vs azimuth relative to the view direction)."""
+    """F43 — position and heading from the observed horizon line."""
     import time
 
     from marsnav.geodesy import aoi_to_geo
-    from marsnav.localize import skyline_match
+    from marsnav.localize import error_ellipse, skyline_match
 
     grid = _route_grid(req.site_id, req.level)
     dem = np.where(np.isfinite(grid.z), grid.z, np.nanmin(grid.z))
@@ -756,8 +756,8 @@ def skyline(req: SkylineRequest) -> dict:
     cand = None
     if req.prior is not None:
         px, py = geo_to_aoi(req.prior.lat, req.prior.lon)
-        step = max(grid.cell, req.radius_m / 25.0)
-        offs = np.arange(-req.radius_m, req.radius_m + 0.5 * step, step)
+        step = max(grid.cell, req.search_radius_m / 25.0)
+        offs = np.arange(-req.search_radius_m, req.search_radius_m + 0.5 * step, step)
         gx, gy = np.meshgrid(float(px) + offs, float(py) + offs)
         cand = np.column_stack([gx.ravel(), gy.ravel()])
         lo_x, hi_x = origin[0], origin[0] + (grid.z.shape[1] - 1) * grid.cell
@@ -765,19 +765,34 @@ def skyline(req: SkylineRequest) -> dict:
         cand = cand[(cand[:, 0] >= lo_x) & (cand[:, 0] <= hi_x) & (cand[:, 1] >= lo_y) & (cand[:, 1] <= hi_y)]
         if len(cand) == 0:
             raise err(400, "OUT_OF_AOI", "The search area around the prior position lies outside the site.")
+    az_rel = -req.fov_deg / 2.0 + np.arange(len(req.observed_profile_deg)) * req.azimuth_step_deg
     t0 = time.perf_counter()
     try:
-        res = skyline_match(dem, grid.cell, [h.elev_deg for h in req.horizon], [h.az_rel_deg for h in req.horizon],
-                            candidates_xy=cand, origin_xy=origin)
+        res = skyline_match(dem, grid.cell, req.observed_profile_deg, az_rel, candidates_xy=cand, origin_xy=origin)
     except ValueError as e:
         raise err(422, "BAD_HORIZON", f"{e}. Provide at least 8 horizon samples spanning the field of view.") from None
     lat, lon = aoi_to_geo(res.x, res.y)
-    return {"position": {"lat": float(lat), "lon": float(lon)}, "xy": {"x": float(res.x), "y": float(res.y)},
-            "heading_deg": float(res.heading_deg), "score": float(res.score), "confidence": float(res.confidence),
-            "peak_ratio": float(res.peak_ratio) if np.isfinite(res.peak_ratio) else None,
-            "sigma_heading_deg": float(res.sigma_heading_deg), "cov_xy": np.asarray(res.cov_xy).tolist(), "flags": list(res.flags),
-            "level": grid.level, "candidates": int(len(res.candidates_xy)), "elapsed_s": round(time.perf_counter() - t0, 3),
+    ell = error_ellipse(res.cov_xy)
+    top = np.argsort(-np.asarray(res.scores))[:10]
+    cands = []
+    for i in top:
+        cla, clo = aoi_to_geo(float(res.candidates_xy[i, 0]), float(res.candidates_xy[i, 1]))
+        cands.append({"position": {"lat": float(cla), "lon": float(clo)}, "heading_deg": float(res.headings_deg[i]),
+                      "score": float(res.scores[i])})
+    best = {"position": {"lat": float(lat), "lon": float(lon)}, "xy": {"x": float(res.x), "y": float(res.y)},
+            "heading_deg": float(res.heading_deg), "cov": np.asarray(res.cov_xy).tolist(),
+            "ellipse": {"semi_major_m": ell.semi_major_m, "semi_minor_m": ell.semi_minor_m, "angle_deg": ell.angle_deg, "p": ell.p},
+            "gdop": 0.0, "residuals_deg": [], "iterations": 0, "converged": bool(res.confidence > 0),
+            "quality_flags": [*res.flags, "GDOP_NOT_APPLICABLE"]}
+    return {"best": best, "candidates": cands, "likelihood_cog_url": None, "confidence": float(res.confidence),
+            "score": float(res.score), "sigma_heading_deg": float(res.sigma_heading_deg), "level": grid.level,
+            "searched": int(len(res.candidates_xy)), "elapsed_s": round(time.perf_counter() - t0, 3),
             "note": "Accuracy checked on synthetic terrain only; a flat or featureless horizon returns confidence 0 (FLAT_HORIZON)."}
+
+
+from . import indices  # noqa: E402  (router must be included before the SPA mount below)
+
+app.include_router(indices.router)
 
 
 # ---------------------------------------------------------------- built web app (single-origin hosting)

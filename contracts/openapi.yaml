@@ -139,6 +139,59 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /sites/{site_id}/viewshed:
+    get:
+      tags: [sites]
+      operationId: viewshed
+      description: >-
+        P1 (F10). What is visible from a point (observer height 2 m by default) and where line of sight or radio is shadowed. The mask
+        is cropped around the observer: packbits, row-major, row 0 = north, 1 = visible / inside the range. Level defaults to the
+        routing level (MARSNAV_ROUTE_LEVEL).
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - { $ref: "#/components/parameters/Lat" }
+        - { $ref: "#/components/parameters/Lon" }
+        - { name: height_m, in: query, required: false, schema: { type: number, minimum: 0, maximum: 60, default: 2 } }
+        - { name: target_height_m, in: query, required: false, schema: { type: number, minimum: 0, maximum: 60, default: 0 } }
+        - { name: radius_m, in: query, required: false, schema: { type: number, minimum: 50, maximum: 10000, default: 3000 } }
+        - { name: level, in: query, required: false, schema: { type: string, enum: [L0, L1, L2, L3] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ViewshedResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /sites/{site_id}/isochrones:
+    get:
+      tags: [sites]
+      operationId: isochrones
+      description: >-
+        P1. Reachability: contour lines of the fastest walking return time to the base (F34), as a GeoJSON FeatureCollection with one
+        MultiLineString per level. Time only: oxygen and the EVA budget are not applied here. The first call on a cold server is slow
+        (return field + JIT compilation), later calls are cached per site and level.
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - { name: minutes, in: query, required: false, description: Comma-separated levels in minutes (1 to 8 levels, 1-600), schema: { type: string, default: "15,30,60,90,120" } }
+        - { name: level, in: query, required: false, schema: { type: string, enum: [L0, L1, L2, L3] } }
+      responses:
+        "200": { description: OK, content: { application/geo+json: { schema: { $ref: "#/components/schemas/GeoJsonFeatureCollection" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: Bad minutes list (code BAD_MINUTES), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /sites/{site_id}/walkability/summary:
+    get:
+      tags: [sites]
+      operationId: walkabilitySummary
+      description: >-
+        P1 (F54). Walkability index W = a*S + b*R + c*D + d*U on 0-100 (green 70-100, yellow 40-69, red below 40; hard limits give 0):
+        class shares, means, weights and the resolution limit. The raster itself is the layer `<site>.<level>.walkability` in /sites/{site_id}/layers.
+      parameters:
+        - { $ref: "#/components/parameters/SiteIdPath" }
+        - { name: level, in: query, required: false, schema: { type: string, enum: [L0, L1, L2, L3] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WalkabilitySummary" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /places/search:
     get:
       tags: [places]
@@ -182,6 +235,35 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ParetoRequest" } } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ParetoResult" } } } }
+        "422": { $ref: "#/components/responses/NoRoute" }
+
+  /route/export:
+    post:
+      tags: [routes]
+      operationId: routeExport
+      description: >-
+        P1. A route (as returned by /route) as an RFC 7946 GeoJSON FeatureCollection: LineString with [lon, lat, elevation] plus one
+        Point per waypoint. No `crs` member (RFC 7946 removed it); the body, sphere radius and planetocentric latitude are stated in
+        `properties.coordinate_note`. Query `download=true` adds a Content-Disposition attachment header.
+      parameters:
+        - { name: download, in: query, required: false, schema: { type: boolean, default: false } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExportRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/geo+json: { schema: { $ref: "#/components/schemas/GeoJsonFeatureCollection" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: The route object cannot be exported (code BAD_ROUTE), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /route/rover:
+    post:
+      tags: [routes]
+      operationId: routeRover
+      description: >-
+        P1. Rover traverse with the Apollo walkback rule: feasible only while the crew could walk back to base on foot within their
+        remaining consumables. A traverse that breaks the rule is still returned with feasibility.ok = false and a reason.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RoverRouteRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RoverRouteResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "422": { $ref: "#/components/responses/NoRoute" }
 
   /route/order:
@@ -904,6 +986,106 @@ components:
         best: { $ref: "#/components/schemas/LocalizeResult" }
         candidates: { type: array, items: { type: object, properties: { position: { $ref: "#/components/schemas/GeoPoint" }, heading_deg: { type: number }, score: { type: number } } } }
         likelihood_cog_url: { type: [string, "null"] }
+
+    ExportRequest:
+      type: object
+      required: [route]
+      properties:
+        route: { type: object, additionalProperties: true, description: A route object as returned by /route }
+        site_id: { type: string, default: gale }
+        waypoints: { type: [array, "null"], items: { $ref: "#/components/schemas/GeoPoint" } }
+        name: { type: [string, "null"] }
+
+    GeoJsonFeatureCollection:
+      type: object
+      required: [type, features]
+      properties:
+        type: { type: string, enum: [FeatureCollection] }
+        features: { type: array, items: { type: object, additionalProperties: true } }
+        properties: { type: object, additionalProperties: true }
+
+    RoverRouteRequest:
+      allOf:
+        - { $ref: "#/components/schemas/RouteRequest" }
+        - type: object
+          properties:
+            rover:
+              type: [object, "null"]
+              description: Rover parameters (all optional; defaults are ASSUMPTION values).
+              properties:
+                kind: { type: string, enum: [unpressurised, pressurised] }
+                speed_m_s: { type: number }
+                theta_max_deg: { type: number }
+                step_max_m: { type: number }
+                mass_kg: { type: number }
+                battery_kWh: { type: number }
+                aux_w: { type: number }
+                dose_shield: { type: number }
+                seated_met: { type: number }
+
+    RoverRouteResult:
+      type: object
+      required: [route_id, mobility, geometry, totals, walkback, feasibility, verdict]
+      properties:
+        route_id: { type: string }
+        mobility: { type: string, enum: [rover] }
+        profile: { type: string }
+        geometry: { type: object, additionalProperties: true }
+        xy: { type: array, items: { type: array, items: { type: number } } }
+        totals: { type: object, additionalProperties: true }
+        walkback:
+          type: object
+          properties:
+            margin_min: { type: [number, "null"] }
+            first_violation_index: { type: [integer, "null"] }
+            max_safe_distance_m: { type: [number, "null"] }
+            zero_margin_point: { type: [object, "null"], additionalProperties: true }
+            margin_profile: { type: array, items: { type: number } }
+        feasibility: { type: object, additionalProperties: true }
+        verdict: { type: object, additionalProperties: true }
+        assumptions: { type: array, items: { type: object, additionalProperties: true } }
+        data_levels: { type: array, items: { type: string } }
+        simulated_inputs: { type: array, items: { type: string } }
+        computed_ms: { type: number }
+
+    ViewshedResult:
+      type: object
+      required: [site_id, level, cell_m, observer, crop, bounds, encoding, visible_b64, in_range_b64, visible_fraction]
+      properties:
+        site_id: { type: string }
+        level: { type: string }
+        cell_m: { type: number }
+        observer: { type: object, additionalProperties: true }
+        radius_m: { type: number }
+        crop: { type: object, properties: { row0: { type: integer }, col0: { type: integer }, rows: { type: integer }, cols: { type: integer } } }
+        bounds: { type: object, properties: { north_west: { $ref: "#/components/schemas/GeoPoint" }, south_east: { $ref: "#/components/schemas/GeoPoint" } } }
+        encoding: { type: string }
+        visible_b64: { type: string }
+        in_range_b64: { type: string }
+        visible_fraction: { type: number }
+        elapsed_s: { type: number }
+        accuracy: { type: string }
+
+    WalkabilitySummary:
+      type: object
+      required: [site_id, level, counts, shares, mean_W, thresholds, limitation]
+      properties:
+        site_id: { type: string }
+        level: { type: string }
+        resolution_m: { type: number }
+        simulated: { type: boolean }
+        cells: { type: integer }
+        counts: { type: object, additionalProperties: { type: integer } }
+        shares: { type: object, additionalProperties: { type: number } }
+        mean_W: { type: number }
+        median_W: { type: number }
+        blocked_share: { type: number }
+        mean_scores: { type: object, additionalProperties: { type: number } }
+        inputs_used: { type: array, items: { type: string } }
+        weights: { type: object, additionalProperties: { type: number } }
+        thresholds: { type: object, properties: { green_min: { type: number }, yellow_min: { type: number } } }
+        layer_id: { type: [string, "null"] }
+        limitation: { type: string }
 
     Alert:
       type: object

@@ -168,6 +168,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sites/{site_id}/viewshed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description P1 (F10). What is visible from a point (observer height 2 m by default) and where line of sight or radio is shadowed. The mask is cropped around the observer: packbits, row-major, row 0 = north, 1 = visible / inside the range. Level defaults to the routing level (MARSNAV_ROUTE_LEVEL). */
+        get: operations["viewshed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sites/{site_id}/isochrones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description P1. Reachability: contour lines of the fastest walking return time to the base (F34), as a GeoJSON FeatureCollection with one MultiLineString per level. Time only: oxygen and the EVA budget are not applied here. The first call on a cold server is slow (return field + JIT compilation), later calls are cached per site and level. */
+        get: operations["isochrones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sites/{site_id}/walkability/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description P1 (F54). Walkability index W = a*S + b*R + c*D + d*U on 0-100 (green 70-100, yellow 40-69, red below 40; hard limits give 0): class shares, means, weights and the resolution limit. The raster itself is the layer `<site>.<level>.walkability` in /sites/{site_id}/layers. */
+        get: operations["walkabilitySummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/places/search": {
         parameters: {
             query?: never;
@@ -228,6 +279,40 @@ export interface paths {
         put?: never;
         /** @description P1. Non-dominated routes on the time-vs-risk front and the knee point (BALANCED). */
         post: operations["routePareto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/route/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description P1. A route (as returned by /route) as an RFC 7946 GeoJSON FeatureCollection: LineString with [lon, lat, elevation] plus one Point per waypoint. No `crs` member (RFC 7946 removed it); the body, sphere radius and planetocentric latitude are stated in `properties.coordinate_note`. Query `download=true` adds a Content-Disposition attachment header. */
+        post: operations["routeExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/route/rover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description P1. Rover traverse with the Apollo walkback rule: feasible only while the crew could walk back to base on foot within their remaining consumables. A traverse that breaks the rule is still returned with feasibility.ok = false and a reason. */
+        post: operations["routeRover"];
         delete?: never;
         options?: never;
         head?: never;
@@ -991,6 +1076,129 @@ export interface components {
             }[];
             likelihood_cog_url?: string | null;
         };
+        ExportRequest: {
+            /** @description A route object as returned by /route */
+            route: {
+                [key: string]: unknown;
+            };
+            /** @default gale */
+            site_id: string;
+            waypoints?: components["schemas"]["GeoPoint"][] | null;
+            name?: string | null;
+        };
+        GeoJsonFeatureCollection: {
+            /** @enum {string} */
+            type: "FeatureCollection";
+            features: {
+                [key: string]: unknown;
+            }[];
+            properties?: {
+                [key: string]: unknown;
+            };
+        };
+        RoverRouteRequest: components["schemas"]["RouteRequest"] & {
+            /** @description Rover parameters (all optional; defaults are ASSUMPTION values). */
+            rover?: {
+                /** @enum {string} */
+                kind?: "unpressurised" | "pressurised";
+                speed_m_s?: number;
+                theta_max_deg?: number;
+                step_max_m?: number;
+                mass_kg?: number;
+                battery_kWh?: number;
+                aux_w?: number;
+                dose_shield?: number;
+                seated_met?: number;
+            } | null;
+        };
+        RoverRouteResult: {
+            route_id: string;
+            /** @enum {string} */
+            mobility: "rover";
+            profile?: string;
+            geometry: {
+                [key: string]: unknown;
+            };
+            xy?: number[][];
+            totals: {
+                [key: string]: unknown;
+            };
+            walkback: {
+                margin_min?: number | null;
+                first_violation_index?: number | null;
+                max_safe_distance_m?: number | null;
+                zero_margin_point?: {
+                    [key: string]: unknown;
+                } | null;
+                margin_profile?: number[];
+            };
+            feasibility: {
+                [key: string]: unknown;
+            };
+            verdict: {
+                [key: string]: unknown;
+            };
+            assumptions?: {
+                [key: string]: unknown;
+            }[];
+            data_levels?: string[];
+            simulated_inputs?: string[];
+            computed_ms?: number;
+        };
+        ViewshedResult: {
+            site_id: string;
+            level: string;
+            cell_m: number;
+            observer: {
+                [key: string]: unknown;
+            };
+            radius_m?: number;
+            crop: {
+                row0?: number;
+                col0?: number;
+                rows?: number;
+                cols?: number;
+            };
+            bounds: {
+                north_west?: components["schemas"]["GeoPoint"];
+                south_east?: components["schemas"]["GeoPoint"];
+            };
+            encoding: string;
+            visible_b64: string;
+            in_range_b64: string;
+            visible_fraction: number;
+            elapsed_s?: number;
+            accuracy?: string;
+        };
+        WalkabilitySummary: {
+            site_id: string;
+            level: string;
+            resolution_m?: number;
+            simulated?: boolean;
+            cells?: number;
+            counts: {
+                [key: string]: number;
+            };
+            shares: {
+                [key: string]: number;
+            };
+            mean_W: number;
+            median_W?: number;
+            blocked_share?: number;
+            mean_scores?: {
+                [key: string]: number;
+            };
+            inputs_used?: string[];
+            weights?: {
+                [key: string]: number;
+            };
+            thresholds: {
+                green_min?: number;
+                yellow_min?: number;
+            };
+            layer_id?: string | null;
+            limitation: string;
+        };
         Alert: {
             id: string;
             /** @enum {string} */
@@ -1382,6 +1590,99 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    viewshed: {
+        parameters: {
+            query: {
+                lat: components["parameters"]["Lat"];
+                lon: components["parameters"]["Lon"];
+                height_m?: number;
+                target_height_m?: number;
+                radius_m?: number;
+                level?: "L0" | "L1" | "L2" | "L3";
+            };
+            header?: never;
+            path: {
+                site_id: components["parameters"]["SiteIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewshedResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    isochrones: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated levels in minutes (1 to 8 levels */
+                minutes?: string;
+                level?: "L0" | "L1" | "L2" | "L3";
+            };
+            header?: never;
+            path: {
+                site_id: components["parameters"]["SiteIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/geo+json": components["schemas"]["GeoJsonFeatureCollection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Bad minutes list (code BAD_MINUTES) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    walkabilitySummary: {
+        parameters: {
+            query?: {
+                level?: "L0" | "L1" | "L2" | "L3";
+            };
+            header?: never;
+            path: {
+                site_id: components["parameters"]["SiteIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkabilitySummary"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     searchPlaces: {
         parameters: {
             query: {
@@ -1481,6 +1782,68 @@ export interface operations {
                     "application/json": components["schemas"]["ParetoResult"];
                 };
             };
+            422: components["responses"]["NoRoute"];
+        };
+    };
+    routeExport: {
+        parameters: {
+            query?: {
+                download?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/geo+json": components["schemas"]["GeoJsonFeatureCollection"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description The route object cannot be exported (code BAD_ROUTE) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    routeRover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoverRouteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoverRouteResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             422: components["responses"]["NoRoute"];
         };
     };
