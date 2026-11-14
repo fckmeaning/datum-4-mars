@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from marsnav.config import param
 from marsnav.env import (
     SIMULATED_FIELDS,
     atmosphere,
@@ -332,9 +333,26 @@ def route_uncertainty(_: dict) -> dict:
     raise _not_yet("Route uncertainty")
 
 
+class OffRouteRequest(BaseModel):
+    route_xy: list[list[float]] = Field(min_length=2)
+    position: GeoPoint
+    recent_distances_m: list[float] = []
+
+
 @app.post(API + "/route/off-route")
-def off_route(_: dict) -> dict:
-    raise _not_yet("Off-route detection")
+def off_route_ep(req: OffRouteRequest) -> dict:
+    from marsnav.geodesy import aoi_to_geo
+    from marsnav.routing.offroute import off_route
+
+    x, y = geo_to_aoi(req.position.lat, req.position.lon)
+    try:
+        r = off_route(req.route_xy, [float(x), float(y)], req.recent_distances_m)
+    except ValueError as e:
+        raise err(400, "INVALID_ROUTE", str(e)) from None
+    nx, ny = r["nearest_xy"]
+    lat, lon = aoi_to_geo(nx, ny)
+    return {"distance_m": r["distance_m"], "progress_m": r["progress_m"], "progress_fraction": r["progress_fraction"],
+            "nearest": {"lat": float(lat), "lon": float(lon)}, "reroute": r["reroute"]}
 
 
 # ---------------------------------------------------------------- environment
@@ -375,24 +393,75 @@ def space_weather(mode: Literal["live", "replay", "simulated"] | None = None) ->
     return []
 
 
+def _orbiter_list() -> list[dict]:
+    out = []
+    for o in sites.load_orbiters():
+        out.append({"status": "unknown", "agency": "", "accuracy": "approximate", "source": "", "credit": "", "relay_capable": False, **o})
+    return out
+
+
 @app.get(API + "/orbiters")
 def orbiters() -> list[dict]:
-    return []
+    return _orbiter_list()
 
 
 @app.get(API + "/orbiters/states")
 def orbiter_states(utc: str = Query(...)) -> list[dict]:
-    return []
+    from marsnav.orbits import orbit_positions, to_unix
+
+    try:
+        t = to_unix(utc)
+    except ValueError:
+        raise err(400, "INVALID_TIME", "utc must be an ISO 8601 timestamp, e.g. 2026-11-14T15:30:00Z") from None
+    out = []
+    for o in _orbiter_list():
+        p = orbit_positions(o["elements"], np.array([t]))
+        out.append({"id": o["id"], "utc": utc, "lat": float(p["lat_deg"][0]), "lon": float(p["lon_deg"][0]), "alt_m": float(p["alt_m"][0]),
+                    "xyz_bodyfixed_m": [float(v) for v in p["xyz_fixed"][0]], "accuracy": o["accuracy"]})
+    return out
 
 
 @app.get(API + "/comms/windows")
-def comms_windows() -> list[dict]:
-    raise _not_yet("Comms windows")
+def comms_windows(site_id: str, from_: str = Query(alias="from"), to: str = Query(...), mask_deg: float | None = Query(None, ge=0, le=45),
+                  lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180)) -> list[dict]:
+    from marsnav.orbits import contact_windows
+    from marsnav.sun import parse_utc
+
+    grid = _grid(site_id, None)
+    base = sites.base_place(site_id)
+    la, lo = (lat if lat is not None else base["lat"]), (lon if lon is not None else base["lon"])
+    rc = grid.latlon_to_rc(la, lo)
+    if not grid.inside(*rc):
+        raise err(400, "OUT_OF_AOI", "The point is outside the site area.")
+    try:
+        t0, t1 = parse_utc(from_).timestamp(), parse_utc(to).timestamp()
+    except ValueError:
+        raise err(400, "INVALID_TIME", "from/to must be ISO 8601 timestamps.") from None
+    if not 0 < t1 - t0 <= 3 * 86400:
+        raise err(400, "INVALID_RANGE", "The time range must be positive and at most 3 days.")
+    h = horizon_profile(grid.z, grid.cell, rc[0], rc[1], n_az=72, r_max=20000.0)
+    site_r = float(param("constants.R_sphere")) + float(grid.z[rc])
+    out = []
+    for o in _orbiter_list():
+        if not o.get("relay_capable"):
+            continue
+        for w in contact_windows(o["elements"], la, lo, t0, t1, mask_deg=mask_deg, horizon_rad=h, site_radius_m=site_r):
+            out.append({"orbiter_id": o["id"], "aos_utc": datetime.fromtimestamp(w["aos"], UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+                        "los_utc": datetime.fromtimestamp(w["los"], UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+                        "duration_s": w["duration_s"], "max_elevation_deg": w["max_elevation_deg"], "terrain_masked": w["terrain_masked"],
+                        "accuracy": o["accuracy"]})
+    return sorted(out, key=lambda w: w["aos_utc"])
 
 
 @app.get(API + "/earth/light-time")
 def light_time(utc: str = Query(...)) -> dict:
-    raise _not_yet("Earth light time")
+    from marsnav.orbits import earth_mars_light_time
+
+    try:
+        r = earth_mars_light_time(utc)
+    except ValueError:
+        raise err(400, "INVALID_TIME", "utc must be an ISO 8601 timestamp, e.g. 2026-11-14T15:30:00Z") from None
+    return {"utc": utc, "distance_m": r["distance_m"], "one_way_s": r["one_way_s"], "accuracy": "approximate"}
 
 
 class SunCompassRequest(BaseModel):

@@ -97,6 +97,7 @@ terrain:
 
 navigation:
   comm_mask_deg:      { value: 10.0, unit: deg, source: ASSUMPTION }
+  contact_step_s:     { value: 30.0, unit: s,   source: "design: sampling step for contact-window search; edges refined by bisection to 1 s" }
   d_off_m:            { value: 25.0, unit: m,   source: ASSUMPTION }
   k_off:              { value: 3,    unit: fixes, source: ASSUMPTION }
   ellipse_p:          { value: 0.95, unit: "1", source: design }

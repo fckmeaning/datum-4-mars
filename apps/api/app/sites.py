@@ -77,6 +77,17 @@ def places(site_id: str) -> list[dict]:
     return out
 
 
+def load_orbiters() -> list[dict]:
+    """Orbiters from data/processed/orbiters.json (produced by W1 from verified sources). Empty list until that file exists —
+    no spacecraft elements are invented here."""
+    f = data_root() / "orbiters.json"
+    if not f.is_file():
+        return []
+    items = json.loads(f.read_text(encoding="utf-8"))
+    items = items.get("orbiters", items) if isinstance(items, dict) else items
+    return [o for o in items if {"id", "name", "elements"} <= set(o)]
+
+
 def site_record(site_id: str) -> dict:
     p = projection()
     if site_id != p["aoi"]["site_id"]:

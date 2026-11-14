@@ -1,0 +1,14 @@
+version: 1
+products:
+- id: usgs.hrsc_mola_blend_200m_v2
+  family: topography
+  product_id: Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2
+  source_url: https://planetarymaps.usgs.gov/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
+  retrieved_at: '2026-11-14T08:02:25Z'
+  resolution_m: 200.0
+  license: public domain (USGS/NASA); HRSC ESA/DLR/FU Berlin [verify]
+  credit: NASA/JPL/GSFC (MOLA), ESA/DLR/FU Berlin (HRSC); USGS Astrogeology
+  level: L1
+  simulated: false
+  notes: AOI window read via HTTP range requests and reprojected (bilinear) to the
+    AOI transverse Mercator grid.
