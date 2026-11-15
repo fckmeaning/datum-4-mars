@@ -255,10 +255,18 @@ export function SiteMap({ lat, lon, centre, zoom, stationName, basemap, dataLaye
       f.setStyle(
         new Style({
           stroke: new Stroke({ color: "#fff1e8", width: 2, lineDash: [8, 6] }),
-          text: new Text({ text: `${hit.zone.name} Exploration Zone (${ZONE_RADIUS_KM} km)`, font: "11px Inter, sans-serif", fill: new Fill({ color: "#fff1e8" }), stroke: new Stroke({ color: "#1c0606", width: 3 }), offsetY: 0 }),
         }),
       );
       zoneSource.addFeature(f);
+      // the name sits on the northernmost point of the ring, not at the polygon centre where the route runs
+      const top = ring.reduce((a, b) => (b[1]! > a[1]! ? b : a));
+      const tag = new Feature({ geometry: new Point(top as [number, number]) });
+      tag.setStyle(
+        new Style({
+          text: new Text({ text: `${hit.zone.name} Exploration Zone (${ZONE_RADIUS_KM} km)`, font: "11px Inter, sans-serif", fill: new Fill({ color: "#fff1e8" }), stroke: new Stroke({ color: "#1c0606", width: 3 }), offsetY: -10, overflow: true }),
+        }),
+      );
+      zoneSource.addFeature(tag);
     }
     const zone = new VectorLayer({ source: zoneSource, visible: showZone });
     zone.setZIndex(30);

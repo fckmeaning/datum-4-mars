@@ -519,3 +519,24 @@
   letter-spacing: 0.08em;
   color: var(--hz-accent-2, #7ff0e0);
 }
+
+/* ---- phone: the 2D / 3D map gets the room; the panels shrink to thin strips ---- */
+@media (max-width: 860px) {
+  .site-relief__hud {
+    left: 8px; right: 8px; bottom: 44px; width: auto; gap: 4px; padding: 6px 8px;
+  }
+  .site-relief__hud > div:not(.site-relief__modes),
+  .site-relief__hud .site-relief__tile,
+  .site-relief__hud .site-relief__note { display: none; }
+  .site-relief__hud label { display: flex; align-items: center; gap: 8px; font-size: 10.5px; }
+  .site-relief__hud label input[type="range"] { flex: 1; min-width: 0; }
+  .site-relief__modes { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .site-relief__modes button { flex: none; }
+  .site-detail__telemetry { flex-wrap: nowrap; overflow-x: auto; gap: 4px 14px; padding: 5px 10px; white-space: nowrap; scrollbar-width: none; }
+  .site-detail__telemetry::-webkit-scrollbar { display: none; }
+  .eva-card {
+    top: 8px; left: 8px; right: 8px; width: auto; padding: 8px 10px; max-height: 34%;
+  }
+  .eva-card__hint { display: none; }
+  .eva-card .eva-card__goals + .eva-card__why, .eva-card__why { font-size: 11px; margin: 4px 0; }
+}
