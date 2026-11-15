@@ -589,3 +589,79 @@ button.globe-screen__site-item:focus-visible,
 .globe-screen__target-pill { padding: 6px 10px; gap: 4px; width: min(470px, calc(100vw - 40px)); }
 .globe-screen__target-actions button { padding: 5px 8px; font-size: 11px; flex-basis: 150px; }
 .globe-screen__target-actions .globe-screen__descend-btn { padding: 5px 8px; font-size: 10.5px; }
+
+/* ---- fix: the round 24px icon-button style leaked onto the action buttons (squashed ellipse, rotated on hover) ---- */
+.globe-screen__target-pill button:hover { transform: none; }
+.globe-screen__target-pill .globe-screen__target-close:hover { transform: rotate(90deg); }
+.globe-screen__target-pill .globe-screen__target-actions button,
+.globe-screen__target-pill .globe-screen__target-clear {
+  height: auto; min-height: 28px; border-radius: 999px; width: auto;
+}
+.globe-screen__target-pill .globe-screen__target-actions button { flex: 1 1 150px; }
+.globe-screen__target-pill .globe-screen__target-actions button:disabled { opacity: 0.55; cursor: not-allowed; }
+.globe-screen__target-pill .globe-screen__target-actions button:not(:disabled):hover {
+  background: color-mix(in srgb, var(--hz-accent, #2dd4bf) 25%, transparent);
+}
+.globe-screen__target-pill .globe-screen__target-clear:hover { transform: none; }
+
+/* ============ Responsive: laptop / big screen vs phone ============ */
+.globe-screen { height: 100vh; height: 100dvh; }
+
+/* large laptop / desktop: roomier decks */
+@media (min-width: 1200px) and (min-height: 760px) {
+  .globe-screen .deck--top { top: 66px; --deck-site-h: 160px; }
+  .globe-screen .deck--bottom { bottom: 50px; --deck-layer-h: 168px; }
+  .globe-screen .site-deck { --card-w: 300px; }
+  .globe-screen .layer-deck { --card-w: 270px; }
+  .globe-screen .layer-card__hint { -webkit-line-clamp: 2; font-size: 11.5px; }
+  .globe-screen .site-card__name { font-size: 20px; }
+  .globe-screen[data-deck="1"] .globe-screen__target-pill { bottom: 232px; }
+  .globe-screen[data-deck="1"] .globe-screen__cursor { bottom: 232px; }
+}
+
+/* phone */
+@media (max-width: 720px) {
+  .globe-screen__top-bar { top: 10px; left: 10px; right: 10px; gap: 8px; }
+  .globe-screen__brand { padding: 6px 10px; gap: 8px; }
+  .globe-screen__logo { font-size: 14px; white-space: nowrap; }
+  .globe-screen__mission-tag { display: none; }
+  .globe-screen__nav-btn { padding: 7px 10px; font-size: 11px; white-space: nowrap; }
+
+  /* decks: slimmer, cards ~ 70% of width so the neighbours peek */
+  .globe-screen .deck--top { top: 52px; --deck-site-h: 112px; }
+  .globe-screen .deck--bottom { bottom: 40px; --deck-layer-h: 120px; }
+  .globe-screen .site-deck { --card-w: min(72vw, 250px); }
+  .globe-screen .layer-deck { --card-w: min(72vw, 230px); }
+  .globe-screen .deck__head, .globe-screen .deck__foot { padding: 0 12px; flex-basis: 22px; font-size: 10px; }
+  .globe-screen .deck__hint { display: none; }
+  .globe-screen .site-card__mission { font-size: 11px; }
+  .globe-screen .site-card__coord { display: none; }
+  .globe-screen .layer-card__hint { display: none; }
+  .globe-screen .layer-card__tags { display: none; }
+
+  /* target strip: full width, sits right above the bottom deck */
+  .globe-screen[data-deck="1"] .globe-screen__target-pill {
+    left: 10px; right: 10px; width: auto; bottom: 168px; padding: 8px 10px;
+  }
+  .globe-screen__target-main { flex-wrap: wrap; row-gap: 4px; white-space: normal; }
+  .globe-screen__target-coords { font-size: 10.5px; }
+  .globe-screen__target-info { font-size: 10.5px; }
+  .globe-screen__target-pill .globe-screen__target-actions button { flex: 1 1 100%; min-height: 36px; font-size: 11px; }
+  .globe-screen__target-pill .globe-screen__target-close { width: 30px; height: 30px; }
+
+  /* things that only clutter a small screen */
+  .globe-screen__cursor,
+  .globe-screen[data-deck="1"] .globe-screen__cursor,
+  .globe-screen__click-hint { display: none; }
+  .globe-screen .bottom-bar { overflow-x: auto; scrollbar-width: none; }
+  .globe-screen .bottom-bar::-webkit-scrollbar { display: none; }
+  /* touch: no hover lift */
+  .globe-screen .deck__item:hover .deck__card { translate: none; }
+}
+
+/* short landscape phone */
+@media (max-height: 460px) and (orientation: landscape) {
+  .globe-screen .deck--top { top: 46px; --deck-site-h: 92px; }
+  .globe-screen .deck--bottom { bottom: 34px; --deck-layer-h: 100px; }
+  .globe-screen[data-deck="1"] .globe-screen__target-pill { bottom: 140px; left: 10px; right: auto; width: min(380px, 50vw); }
+}
