@@ -124,3 +124,13 @@
   font: 500 10px var(--font-ui, sans-serif); color: var(--color-text-muted, #9da7b3);
   padding: 1px 6px; background: rgba(11,15,20,0.55);
 }
+
+/* phone: two slim readouts at the bottom, compass-to-base chip floats above them */
+@media (max-width: 760px) {
+  .fpv-panel { bottom: 8px; padding: 5px 8px; font-size: 10px; backdrop-filter: none; }
+  .fpv-panel--left { left: 6px; width: calc(50% - 9px); min-width: 0; }
+  .fpv-panel--right { right: 6px; width: calc(50% - 9px); min-width: 0; gap: 4px; }
+  .fpv-panel dl { gap: 1px; }
+  .fpv-panel dl > div { gap: 8px; }
+  .fpv-base { bottom: 150px; padding: 3px 8px 3px 4px; gap: 6px; transform: translateX(-50%) scale(0.85); transform-origin: 50% 100%; }
+}
