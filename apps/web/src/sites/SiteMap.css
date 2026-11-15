@@ -45,3 +45,20 @@
 .site-map__canvas.is-planning canvas {
   cursor: crosshair;
 }
+
+/* the map is blank until the first tiles paint: show a quiet loading label behind the (transparent) canvas */
+.site-map::before {
+  content: "Loading map…";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font: 600 12px var(--font-mono, monospace);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hz-dim, #8ea3b8);
+  animation: site-map-wait 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes site-map-wait { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.95; } }
+@media (prefers-reduced-motion: reduce) { .site-map::before { animation: none; } }
